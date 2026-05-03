@@ -16,8 +16,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping({UserController.V1_BASE_PATH, UserController.LEGACY_BASE_PATH})
 public class UserController {
+    public static final String V1_BASE_PATH = "/api/v1/users";
+
+    /**
+     * @deprecated Legacy path retained temporarily for backward compatibility.
+     */
+    @Deprecated(forRemoval = false)
+    public static final String LEGACY_BASE_PATH = "/api/users";
+
     private final CreateUserUseCase createUserUseCase;
     private final GetUserUseCase getUserUseCase;
 

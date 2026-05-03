@@ -23,6 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = UserController.class)
 @Import({ApiExceptionHandler.class, WebAdapterTestApplication.class})
 class UserControllerTest {
+    private static final String VERSIONED_USERS_PATH = "/api/v1/users";
+    private static final String LEGACY_USERS_PATH = "/api/users";
 
     @Autowired
     private MockMvc mockMvc;
@@ -38,7 +40,7 @@ class UserControllerTest {
         when(createUserUseCase.create(anyString(), anyString()))
                 .thenReturn(new User(1L, "john@example.com", "John"));
 
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post(VERSIONED_USERS_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"john@example.com\",\"displayName\":\"John\"}"))
                 .andExpect(status().isCreated())
@@ -48,7 +50,7 @@ class UserControllerTest {
 
     @Test
     void createRejectsInvalidPayload() throws Exception {
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post(VERSIONED_USERS_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"bad\",\"displayName\":\"\"}"))
                 .andExpect(status().isBadRequest())
@@ -59,7 +61,16 @@ class UserControllerTest {
     void getByIdReturnsNotFoundWhenMissing() throws Exception {
         when(getUserUseCase.getById(eq(999L))).thenThrow(new UserNotFoundException("missing"));
 
-        mockMvc.perform(get("/api/users/999"))
+        mockMvc.perform(get(VERSIONED_USERS_PATH + "/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void legacyPathIsStillSupported() throws Exception {
+        when(getUserUseCase.getById(eq(999L))).thenThrow(new UserNotFoundException("missing"));
+
+        mockMvc.perform(get(LEGACY_USERS_PATH + "/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }

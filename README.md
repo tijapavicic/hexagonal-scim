@@ -33,6 +33,12 @@ Production-grade multi-module Spring Boot service using hexagonal architecture.
 - Current endpoint version is `/api/v1/users`.
 - Legacy `/api/users` remains temporarily available for backward compatibility.
 
+## Postman
+
+- Collection: `postman/hexagonal-scim.postman_collection.json`
+- Environment: `postman/local.postman_environment.json`
+- Create requests generate `uniqueEmail` automatically when it is empty.
+
 ## Build
 
 ```bash
@@ -43,6 +49,12 @@ mvn -B clean verify
 
 ```bash
 mvn -pl hex-application spring-boot:run
+```
+
+## Run With Docker Compose
+
+```bash
+docker compose up --build
 ```
 
 ## Quick test

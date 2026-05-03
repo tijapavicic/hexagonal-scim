@@ -1,0 +1,251 @@
+{
+  "info": {
+    "_postman_id": "6fbbd816-c95b-4b59-9156-bf61967b2a52",
+    "name": "hexagonal-scim",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Versioned API",
+      "item": [
+        {
+          "name": "Create user (v1)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"uniqueEmail\")) {",
+                  "  const suffix = Date.now() + \"-\" + Math.floor(Math.random() * 100000);",
+                  "  pm.environment.set(\"uniqueEmail\", \"user.\" + suffix + \"@example.com\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response has id\", function () {",
+                  "  pm.expect(json).to.have.property(\"id\");",
+                  "  pm.expect(json.id).to.not.equal(null);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has email and displayName\", function () {",
+                  "  pm.expect(json).to.have.property(\"email\");",
+                  "  pm.expect(json).to.have.property(\"displayName\");",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set(\"userId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Alice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get user by id (v1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response id matches variable\", function () {",
+                  "  pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"userId\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Response has email and displayName\", function () {",
+                  "  pm.expect(json).to.have.property(\"email\");",
+                  "  pm.expect(json).to.have.property(\"displayName\");",
+                  "});",
+                  "",
+                  "pm.test(\"No deprecation headers on v1\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Deprecation\")).to.eql(null);",
+                  "  pm.expect(pm.response.headers.get(\"Sunset\")).to.eql(null);",
+                  "  pm.expect(pm.response.headers.get(\"Link\")).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Legacy API",
+      "item": [
+        {
+          "name": "Create user (legacy)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"uniqueEmail\")) {",
+                  "  const suffix = Date.now() + \"-\" + Math.floor(Math.random() * 100000);",
+                  "  pm.environment.set(\"uniqueEmail\", \"legacy.user.\" + suffix + \"@example.com\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set(\"userId\", String(json.id));",
+                  "",
+                  "pm.test(\"Legacy response includes deprecation headers\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Deprecation\")).to.exist;",
+                  "  pm.expect(pm.response.headers.get(\"Sunset\")).to.exist;",
+                  "  pm.expect(pm.response.headers.get(\"Link\")).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Legacy Alice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get user by id (legacy)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response id matches variable\", function () {",
+                  "  pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"userId\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Legacy response includes deprecation headers\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Deprecation\")).to.exist;",
+                  "  pm.expect(pm.response.headers.get(\"Sunset\")).to.exist;",
+                  "  pm.expect(pm.response.headers.get(\"Link\")).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    },
+    {
+      "key": "uniqueEmail",
+      "value": ""
+    }
+  ]
+}

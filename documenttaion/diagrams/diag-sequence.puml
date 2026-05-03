@@ -1,0 +1,166 @@
+@startuml
+title Hexagonal SCIM - Sequence Diagram (Aligned Presentation Theme)
+
+scale 0.5
+' Theme aligned with component diagram tones
+skinparam backgroundColor #0D1117
+skinparam shadowing false
+skinparam roundCorner 12
+skinparam defaultFontName Arial
+skinparam defaultFontColor #E6EDF3
+skinparam defaultFontSize 12
+skinparam ArrowColor #58A6FF
+skinparam ArrowThickness 1.3
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam ParticipantBorderColor #30363D
+skinparam ParticipantBackgroundColor #161B22
+skinparam ParticipantFontColor #E6EDF3
+skinparam LifelineBorderColor #4B5563
+skinparam LifelineBackgroundColor #0F172A
+skinparam NoteBackgroundColor #1F2937
+skinparam NoteBorderColor #374151
+skinparam NoteFontColor #D1D5DB
+
+actor "API Client" as Client #93C5FD
+participant "UserControllerAdapter\n(hex-inbound-adapter-web)" as Controller #38BDF8
+participant "CreateUserPort\n(hex-core port.in)" as CreatePort #818CF8
+participant "GetUserPort\n(hex-core port.in)" as GetPort #818CF8
+participant "UserService\n(hex-core)" as Service #C4B5FD
+participant "UserRepositoryPort\n(hex-core port.out)" as RepoPort #A78BFA
+participant "UserRepositoryAdapter\n(hex-outbound-adapter-db)" as RepoAdapter #34D399
+participant "UserJpaRepository\n(Spring Data)" as JpaRepo #6EE7B7
+database "PostgreSQL / H2" as Db #FCA5A5
+participant "ApiExceptionHandlerAdapter" as ExHandler #38BDF8
+participant "LegacyApiDeprecationProperties" as LegacyProps #22D3EE
+
+== Flow 1: Create User (Versioned Endpoint) ==
+Client -> Controller: POST /api/v1/users\n{email, displayName}
+activate Controller
+Controller -> CreatePort: create(email, displayName)
+activate CreatePort
+CreatePort -> Service: create(email, displayName)
+activate Service
+Service -> RepoPort: existsByEmail(email)
+activate RepoPort
+RepoPort -> RepoAdapter: existsByEmail(email)
+activate RepoAdapter
+RepoAdapter -> JpaRepo: existsByEmailIgnoreCase(email)
+activate JpaRepo
+JpaRepo -> Db: SELECT by email
+Db --> JpaRepo: false
+JpaRepo --> RepoAdapter: false
+RepoAdapter --> RepoPort: false
+deactivate JpaRepo
+deactivate RepoAdapter
+deactivate RepoPort
+
+Service -> RepoPort: save(User)
+activate RepoPort
+RepoPort -> RepoAdapter: save(User)
+activate RepoAdapter
+RepoAdapter -> JpaRepo: save(UserEntity)
+activate JpaRepo
+JpaRepo -> Db: INSERT users
+Db --> JpaRepo: persisted row
+JpaRepo --> RepoAdapter: UserEntity(id,...)
+RepoAdapter --> RepoPort: User(id,...)
+RepoPort --> Service: User(id,...)
+deactivate JpaRepo
+deactivate RepoAdapter
+deactivate RepoPort
+
+Service --> CreatePort: User(id,...)
+CreatePort --> Controller: User(id,...)
+Controller --> Client: 201 Created\nUserResponse
+deactivate Service
+deactivate CreatePort
+deactivate Controller
+
+== Flow 2: Create User (Duplicate Email) ==
+Client -> Controller: POST /api/v1/users\n{email already exists}
+activate Controller
+Controller -> CreatePort: create(email, displayName)
+activate CreatePort
+CreatePort -> Service: create(email, displayName)
+activate Service
+Service -> RepoPort: existsByEmail(email)
+activate RepoPort
+RepoPort -> RepoAdapter: existsByEmail(email)
+activate RepoAdapter
+RepoAdapter -> JpaRepo: existsByEmailIgnoreCase(email)
+activate JpaRepo
+JpaRepo -> Db: SELECT by email
+Db --> JpaRepo: true
+JpaRepo --> RepoAdapter: true
+RepoAdapter --> RepoPort: true
+RepoPort --> Service: true
+deactivate JpaRepo
+deactivate RepoAdapter
+deactivate RepoPort
+
+Service --> CreatePort: throws DuplicateUserException
+CreatePort --> Controller: exception bubbles
+Controller -> ExHandler: handleDuplicate(ex)
+activate ExHandler
+ExHandler --> Client: 409 Conflict\n{code: USER_ALREADY_EXISTS}
+deactivate ExHandler
+deactivate Service
+deactivate CreatePort
+deactivate Controller
+
+== Flow 3: Get User (Legacy Endpoint + Deprecation Headers) ==
+Client -> Controller: GET /api/users/{id}
+activate Controller
+Controller -> LegacyProps: read deprecation-value/sunset-date/successor-link
+activate LegacyProps
+LegacyProps --> Controller: header values
+deactivate LegacyProps
+
+note right of Controller
+Adds response headers for legacy path:
+- Deprecation
+- Sunset
+- Link
+end note
+
+Controller -> GetPort: getById(id)
+activate GetPort
+GetPort -> Service: getById(id)
+activate Service
+Service -> RepoPort: findById(id)
+activate RepoPort
+RepoPort -> RepoAdapter: findById(id)
+activate RepoAdapter
+RepoAdapter -> JpaRepo: findById(id)
+activate JpaRepo
+JpaRepo -> Db: SELECT users by id
+Db --> JpaRepo: empty
+JpaRepo --> RepoAdapter: Optional.empty
+RepoAdapter --> RepoPort: Optional.empty
+RepoPort --> Service: Optional.empty
+deactivate JpaRepo
+deactivate RepoAdapter
+deactivate RepoPort
+
+Service --> GetPort: throws UserNotFoundException
+GetPort --> Controller: exception bubbles
+Controller -> ExHandler: handleNotFound(ex)
+activate ExHandler
+ExHandler --> Client: 404 Not Found + legacy headers\n{code: USER_NOT_FOUND}
+deactivate ExHandler
+deactivate Service
+deactivate GetPort
+deactivate Controller
+
+legend right
+|= Tone |= Meaning |
+|<#38BDF8> Inbound Web | Controller + exception handling |
+|<#818CF8> Inbound Ports | Use-case interfaces |
+|<#A78BFA> Outbound Port | Persistence abstraction |
+|<#34D399> Outbound Adapter | DB adapter implementation |
+|<#C4B5FD> Core | Business logic |
+|<#FCA5A5> Data Store | PostgreSQL / H2 |
+endlegend
+
+@enduml

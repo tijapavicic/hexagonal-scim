@@ -9,6 +9,12 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+api:
+  legacy:
+    deprecation-value: "true"
+    sunset-date: "Wed, 31 Dec 2026 23:59:59 GMT"
+    successor-link: '</api/v1/users>; rel="successor-version"'
+
 management:
   endpoints:
     web:

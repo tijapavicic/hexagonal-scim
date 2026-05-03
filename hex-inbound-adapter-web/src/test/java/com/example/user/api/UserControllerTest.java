@@ -1,5 +1,6 @@
 package com.example.user.api;
 
+import com.example.user.config.LegacyApiDeprecationProperties;
 import com.example.user.core.UserNotFoundException;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserUseCase;
@@ -22,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = UserController.class)
-@Import({ApiExceptionHandler.class, WebAdapterTestApplication.class})
+@Import({ApiExceptionHandler.class, WebAdapterTestApplication.class, LegacyApiDeprecationProperties.class})
 class UserControllerTest {
     private static final String VERSIONED_USERS_PATH = "/api/v1/users";
     private static final String LEGACY_USERS_PATH = "/api/users";

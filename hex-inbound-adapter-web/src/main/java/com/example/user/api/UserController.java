@@ -2,6 +2,7 @@ package com.example.user.api;
 
 import com.example.user.api.dto.CreateUserRequest;
 import com.example.user.api.dto.UserResponse;
+import com.example.user.config.LegacyApiDeprecationProperties;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserUseCase;
 import com.example.user.port.in.GetUserUseCase;
@@ -32,24 +33,28 @@ public class UserController {
     private static final String DEPRECATION_HEADER = "Deprecation";
     private static final String SUNSET_HEADER = "Sunset";
     private static final String LINK_HEADER = "Link";
-    private static final String SUNSET_DATE = "Wed, 31 Dec 2026 23:59:59 GMT";
-    private static final String SUCCESSOR_LINK = "</api/v1/users>; rel=\"successor-version\"";
 
     private final CreateUserUseCase createUserUseCase;
     private final GetUserUseCase getUserUseCase;
+    private final LegacyApiDeprecationProperties legacyApiDeprecationProperties;
 
-    public UserController(CreateUserUseCase createUserUseCase, GetUserUseCase getUserUseCase) {
+    public UserController(
+            CreateUserUseCase createUserUseCase,
+            GetUserUseCase getUserUseCase,
+            LegacyApiDeprecationProperties legacyApiDeprecationProperties
+    ) {
         this.createUserUseCase = createUserUseCase;
         this.getUserUseCase = getUserUseCase;
+        this.legacyApiDeprecationProperties = legacyApiDeprecationProperties;
     }
 
     @ModelAttribute
     void addLegacyDeprecationHeaders(HttpServletRequest request, HttpServletResponse response) {
         String uri = request.getRequestURI();
         if (uri.equals(LEGACY_BASE_PATH) || uri.startsWith(LEGACY_BASE_PATH + "/")) {
-            response.setHeader(DEPRECATION_HEADER, "true");
-            response.setHeader(SUNSET_HEADER, SUNSET_DATE);
-            response.setHeader(LINK_HEADER, SUCCESSOR_LINK);
+            response.setHeader(DEPRECATION_HEADER, legacyApiDeprecationProperties.getDeprecationValue());
+            response.setHeader(SUNSET_HEADER, legacyApiDeprecationProperties.getSunsetDate());
+            response.setHeader(LINK_HEADER, legacyApiDeprecationProperties.getSuccessorLink());
         }
     }
 

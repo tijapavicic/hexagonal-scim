@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,6 +45,9 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"john@example.com\",\"displayName\":\"John\"}"))
                 .andExpect(status().isCreated())
+                .andExpect(header().doesNotExist("Deprecation"))
+                .andExpect(header().doesNotExist("Sunset"))
+                .andExpect(header().doesNotExist("Link"))
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.email").value("john@example.com"));
     }
@@ -54,6 +58,7 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"bad\",\"displayName\":\"\"}"))
                 .andExpect(status().isBadRequest())
+                .andExpect(header().doesNotExist("Deprecation"))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
@@ -63,6 +68,9 @@ class UserControllerTest {
 
         mockMvc.perform(get(VERSIONED_USERS_PATH + "/999"))
                 .andExpect(status().isNotFound())
+                .andExpect(header().doesNotExist("Deprecation"))
+                .andExpect(header().doesNotExist("Sunset"))
+                .andExpect(header().doesNotExist("Link"))
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 
@@ -72,6 +80,9 @@ class UserControllerTest {
 
         mockMvc.perform(get(LEGACY_USERS_PATH + "/999"))
                 .andExpect(status().isNotFound())
+                .andExpect(header().string("Deprecation", "true"))
+                .andExpect(header().string("Sunset", "Wed, 31 Dec 2026 23:59:59 GMT"))
+                .andExpect(header().string("Link", "</api/v1/users>; rel=\"successor-version\""))
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 }

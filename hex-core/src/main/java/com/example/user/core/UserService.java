@@ -1,11 +1,11 @@
 package com.example.user.core;
 
 import com.example.user.model.User;
-import com.example.user.port.in.CreateUserUseCase;
-import com.example.user.port.in.GetUserUseCase;
+import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.GetUserPort;
 import com.example.user.port.out.UserRepositoryPort;
 
-public class UserService implements CreateUserUseCase, GetUserUseCase {
+public class UserService implements CreateUserPort, GetUserPort {
     private final UserRepositoryPort userRepositoryPort;
 
     public UserService(UserRepositoryPort userRepositoryPort) {

@@ -4,8 +4,8 @@ import com.example.user.api.dto.CreateUserRequest;
 import com.example.user.api.dto.UserResponse;
 import com.example.user.config.LegacyApiDeprecationProperties;
 import com.example.user.model.User;
-import com.example.user.port.in.CreateUserUseCase;
-import com.example.user.port.in.GetUserUseCase;
+import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.GetUserPort;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping({UserController.V1_BASE_PATH, UserController.LEGACY_BASE_PATH})
-public class UserController {
+@RequestMapping({UserControllerAdapter.V1_BASE_PATH, UserControllerAdapter.LEGACY_BASE_PATH})
+public class UserControllerAdapter {
     public static final String V1_BASE_PATH = "/api/v1/users";
 
     /**
@@ -34,17 +34,17 @@ public class UserController {
     private static final String SUNSET_HEADER = "Sunset";
     private static final String LINK_HEADER = "Link";
 
-    private final CreateUserUseCase createUserUseCase;
-    private final GetUserUseCase getUserUseCase;
+    private final CreateUserPort createUserPort;
+    private final GetUserPort getUserPort;
     private final LegacyApiDeprecationProperties legacyApiDeprecationProperties;
 
-    public UserController(
-            CreateUserUseCase createUserUseCase,
-            GetUserUseCase getUserUseCase,
+    public UserControllerAdapter(
+            CreateUserPort createUserPort,
+            GetUserPort getUserPort,
             LegacyApiDeprecationProperties legacyApiDeprecationProperties
     ) {
-        this.createUserUseCase = createUserUseCase;
-        this.getUserUseCase = getUserUseCase;
+        this.createUserPort = createUserPort;
+        this.getUserPort = getUserPort;
         this.legacyApiDeprecationProperties = legacyApiDeprecationProperties;
     }
 
@@ -61,13 +61,14 @@ public class UserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
-        User created = createUserUseCase.create(request.email(), request.displayName());
+        User created = createUserPort.create(request.email(), request.displayName());
         return new UserResponse(created.id(), created.email(), created.displayName());
     }
 
     @GetMapping("/{id}")
     public UserResponse getById(@PathVariable("id") Long id) {
-        User user = getUserUseCase.getById(id);
+        User user = getUserPort.getById(id);
         return new UserResponse(user.id(), user.email(), user.displayName());
     }
 }
+

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
-public class ApiExceptionHandler {
+public class ApiExceptionHandlerAdapter {
 
     @ExceptionHandler(DuplicateUserException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
@@ -30,4 +30,5 @@ public class ApiExceptionHandler {
         return new ErrorResponse("VALIDATION_ERROR", "Request validation failed");
     }
 }
+
 

@@ -19,6 +19,16 @@ api:
     default-size: 10
     default-pageable: true
 
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+  show-actuator: false
+
 management:
   endpoints:
     web:

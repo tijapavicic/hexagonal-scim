@@ -1,7 +1,7 @@
 package com.example.user.api;
 
-import com.example.user.config.ApiPaginationProperties;
-import com.example.user.config.LegacyApiDeprecationProperties;
+import com.example.user.api.config.ApiPaginationProperties;
+import com.example.user.api.config.LegacyApiDeprecationProperties;
 import com.example.user.core.UserNotFoundException;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;

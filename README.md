@@ -34,12 +34,15 @@ hexagonal-scim/
 │       ├── api/
 │       │   ├── UserControllerAdapter.java
 │       │   ├── ApiExceptionHandlerAdapter.java
+│       │   ├── config/
+│       │   │   ├── LegacyApiDeprecationProperties.java
+│       │   │   ├── ApiPaginationProperties.java
+│       │   │   └── OpenApiConfig.java
 │       │   └── dto/
 │       │       ├── CreateUserRequest.java
 │       │       ├── UserResponse.java
+│       │       ├── PagedUserResponse.java
 │       │       └── ErrorResponse.java
-│       └── config/
-│           └── LegacyApiDeprecationProperties.java
 │
 ├── hex-outbound-adapter-db/                         # JPA adapter → depends on hex-core
 │   └── src/main/java/com/example/user/adapter/db/
@@ -246,7 +249,14 @@ flowchart LR
 - `GET /api/v1/users/{id}` — Get a user by ID
 - `/api/users` — Legacy paths (deprecated, returns `Deprecation`, `Sunset`, `Link` headers)
 
-## Postman
+## API Documentation (Swagger UI)
+
+- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **OpenAPI JSON spec**: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+
+Paths are configurable via `springdoc.swagger-ui.path` and `springdoc.api-docs.path` in `application.yml`.
+
+
 
 - Collection: `postman/hexagonal-scim.postman_collection.json`
 - Environment: `postman/local.postman_environment.json`

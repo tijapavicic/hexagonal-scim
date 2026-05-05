@@ -1,5 +1,6 @@
 package com.example.user.api;
 
+import com.example.user.config.ApiPaginationProperties;
 import com.example.user.config.LegacyApiDeprecationProperties;
 import com.example.user.core.UserNotFoundException;
 import com.example.user.model.PagedUsers;
@@ -31,11 +32,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = UserControllerAdapter.class)
-@Import({ApiExceptionHandlerAdapter.class, WebAdapterTestApplication.class, LegacyApiDeprecationProperties.class})
+@Import({ApiExceptionHandlerAdapter.class, WebAdapterTestApplication.class, LegacyApiDeprecationProperties.class, ApiPaginationProperties.class})
 @TestPropertySource(properties = {
         "api.legacy.deprecation-value=deprecated",
         "api.legacy.sunset-date=Thu, 01 Jan 2027 00:00:00 GMT",
-        "api.legacy.successor-link=</api/v2/users>; rel=\"successor-version\""
+        "api.legacy.successor-link=</api/v2/users>; rel=\"successor-version\"",
+        "api.pagination.default-page=0",
+        "api.pagination.default-size=10",
+        "api.pagination.default-pageable=true"
 })
 class UserControllerAdapterTest {
     private static final String VERSIONED_USERS_PATH = "/api/v1/users";
@@ -49,6 +53,9 @@ class UserControllerAdapterTest {
 
     @Autowired
     private LegacyApiDeprecationProperties legacyApiDeprecationProperties;
+
+    @Autowired
+    private ApiPaginationProperties apiPaginationProperties;
 
     @MockBean
     private CreateUserPort createUserPort;
@@ -112,7 +119,11 @@ class UserControllerAdapterTest {
                 .andExpect(jsonPath("$.hasPrevious").value(false))
                 .andExpect(jsonPath("$.hasNext").value(false));
 
-        verify(getAllUsersPort).getAll(0, 10, true);
+        // defaults sourced from ApiPaginationProperties, not hardcoded constants
+        verify(getAllUsersPort).getAll(
+                apiPaginationProperties.getDefaultPage(),
+                apiPaginationProperties.getDefaultSize(),
+                apiPaginationProperties.isDefaultPageable());
     }
 
     @Test

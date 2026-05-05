@@ -14,6 +14,10 @@ api:
     deprecation-value: "true"
     sunset-date: "Wed, 31 Dec 2026 23:59:59 GMT"
     successor-link: '</api/v1/users>; rel="successor-version"'
+  pagination:
+    default-page: 0
+    default-size: 10
+    default-pageable: true
 
 management:
   endpoints:

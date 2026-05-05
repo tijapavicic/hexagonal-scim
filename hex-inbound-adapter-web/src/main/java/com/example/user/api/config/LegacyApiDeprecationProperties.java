@@ -1,8 +1,16 @@
-package com.example.user.config;
+package com.example.user.api.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+/**
+ * Typed configuration for the legacy {@code /api/users} deprecation response headers.
+ * <pre>
+ * api.legacy.deprecation-value – value of the {@code Deprecation} header
+ * api.legacy.sunset-date       – value of the {@code Sunset} header (RFC 7231 date)
+ * api.legacy.successor-link    – value of the {@code Link} header pointing to v1
+ * </pre>
+ */
 @Component
 @ConfigurationProperties(prefix = "api.legacy")
 public class LegacyApiDeprecationProperties {

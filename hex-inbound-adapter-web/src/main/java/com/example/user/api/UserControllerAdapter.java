@@ -3,6 +3,7 @@ package com.example.user.api;
 import com.example.user.api.dto.CreateUserRequest;
 import com.example.user.api.dto.PagedUserResponse;
 import com.example.user.api.dto.UserResponse;
+import com.example.user.config.ApiPaginationProperties;
 import com.example.user.config.LegacyApiDeprecationProperties;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
@@ -42,17 +43,20 @@ public class UserControllerAdapter {
     private final GetUserPort getUserPort;
     private final GetAllUsersPort getAllUsersPort;
     private final LegacyApiDeprecationProperties legacyApiDeprecationProperties;
+    private final ApiPaginationProperties apiPaginationProperties;
 
     public UserControllerAdapter(
             CreateUserPort createUserPort,
             GetUserPort getUserPort,
             GetAllUsersPort getAllUsersPort,
-            LegacyApiDeprecationProperties legacyApiDeprecationProperties
+            LegacyApiDeprecationProperties legacyApiDeprecationProperties,
+            ApiPaginationProperties apiPaginationProperties
     ) {
         this.createUserPort = createUserPort;
         this.getUserPort = getUserPort;
         this.getAllUsersPort = getAllUsersPort;
         this.legacyApiDeprecationProperties = legacyApiDeprecationProperties;
+        this.apiPaginationProperties = apiPaginationProperties;
     }
 
     @ModelAttribute
@@ -74,11 +78,15 @@ public class UserControllerAdapter {
 
     @GetMapping
     public PagedUserResponse getAll(
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "10") int size,
-            @RequestParam(name = "pageable", defaultValue = "true") boolean pageable
+            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "size", required = false) Integer size,
+            @RequestParam(name = "pageable", required = false) Boolean pageable
     ) {
-        PagedUsers pagedUsers = getAllUsersPort.getAll(page, size, pageable);
+        int effectivePage     = page     != null ? page     : apiPaginationProperties.getDefaultPage();
+        int effectiveSize     = size     != null ? size     : apiPaginationProperties.getDefaultSize();
+        boolean effectivePageable = pageable != null ? pageable : apiPaginationProperties.isDefaultPageable();
+
+        PagedUsers pagedUsers = getAllUsersPort.getAll(effectivePage, effectiveSize, effectivePageable);
         return new PagedUserResponse(
                 pagedUsers.content().stream()
                         .map(user -> new UserResponse(user.id(), user.email(), user.displayName()))

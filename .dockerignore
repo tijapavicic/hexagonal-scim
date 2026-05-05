@@ -1,0 +1,24 @@
+.git
+.gitignore
+.github
+.idea
+*.iml
+
+# Build outputs — never needed in the image build context
+**/target
+**/target/**
+
+# Documentation and tooling
+documenttaion
+postman
+README.md
+*.md
+
+# Docker files themselves (not needed inside the image)
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Local config overrides
+docker/
+

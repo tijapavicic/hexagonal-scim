@@ -1,21 +1,84 @@
-version: "3.9"
+# Compose V2 — top-level 'version' key is obsolete and intentionally omitted.
+# Requires Docker Compose v2.0+ (bundled with Docker Desktop 3.x+ and Docker Engine 20.10+).
 
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  # Single instance shared by the application and Keycloak (separate databases).
+  # The init script creates the keycloak database on the very first start.
   db:
     image: postgres:16-alpine
     container_name: hexagonal-scim-db
     environment:
-      POSTGRES_DB: hexagonal_scim
-      POSTGRES_USER: scim
+      POSTGRES_DB:       hexagonal_scim
+      POSTGRES_USER:     scim
       POSTGRES_PASSWORD: scim
+    volumes:
+      # Named volume — data survives container restarts and recreations.
+      - postgres_data:/var/lib/postgresql/data
+      # Init script: creates keycloak DB + user (runs only when data volume is empty).
+      - ./docker/postgres/init-keycloak.sql:/docker-entrypoint-initdb.d/10-keycloak.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U scim -d hexagonal_scim"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+    networks:
+      - hexagonal-net
     ports:
-      - "5432:5432"
+      - "5432:5432"   # Expose for local tooling (pgAdmin, psql, etc.)
+    restart: unless-stopped
 
+  # ── Keycloak ────────────────────────────────────────────────────────────────
+  # Identity and access management — infrastructure for OAuth2 / OIDC.
+  # Running in dev mode (start-dev) backed by the PostgreSQL instance above.
+  #
+  # Admin console : http://localhost:8180  (user: admin / admin)
+  # Realm to create manually or via import: hexagonal-scim
+  # Token endpoint (after realm created):
+  #   http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    container_name: hexagonal-scim-keycloak
+    # start-dev: no TLS required, relaxed hostname checks, live-reload config.
+    # Suitable for development; use 'start' (with a build stage) for production.
+    command: start-dev
+    environment:
+      # ── Database ────────────────────────────────────────────────────────────
+      KC_DB:          postgres
+      KC_DB_URL:      jdbc:postgresql://db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+
+      # ── Bootstrap admin (first-run only; credentials are stored in DB after) ─
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+
+      # ── HTTP ────────────────────────────────────────────────────────────────
+      # Use 8180 internally so Keycloak does NOT clash with the app on 8080.
+      KC_HTTP_PORT: 8180
+
+      # ── Observability ───────────────────────────────────────────────────────
+      KC_HEALTH_ENABLED: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # /health/ready returns HTTP 200 {"status":"UP"} when Keycloak is ready.
+      # start_period absorbs first-time schema creation which can take >60 s.
+      test: ["CMD-SHELL", "curl -fs http://localhost:8180/health/ready | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - hexagonal-net
+    ports:
+      - "8180:8180"
+    restart: unless-stopped
+
+  # ── Application ─────────────────────────────────────────────────────────────
   app:
     build:
       context: .
@@ -24,11 +87,38 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # service_started: the app does not yet enforce JWT on startup.
+      # Change to service_healthy once Spring Security OAuth2 is wired in.
+      keycloak:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/hexagonal_scim
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://db:5432/hexagonal_scim
       SPRING_DATASOURCE_USERNAME: scim
       SPRING_DATASOURCE_PASSWORD: scim
+      # ── Keycloak / OAuth2 ──────────────────────────────────────────────────
+      # Ready for Spring Security Resource Server.
+      # Activate by adding spring-boot-starter-oauth2-resource-server and
+      # the security configuration — this env var will be auto-picked up.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8180/realms/hexagonal-scim
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - hexagonal-net
     ports:
       - "8080:8080"
+    restart: unless-stopped
 
+# ── Volumes ────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────────
+networks:
+  hexagonal-net:
+    driver: bridge

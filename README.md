@@ -214,7 +214,10 @@ flowchart LR
 ## Database migrations
 
 - Schema is migration-driven with Flyway.
-- Initial migration is at `hex-application/src/main/resources/db/migration/V1__create_users_table.sql`.
+- Migrations live in `hex-application/src/main/resources/db/migration/`:
+  - `V1__create_users_table.sql` — Initial schema with users table.
+  - `V2__next_change_template.sql` — Placeholder for future changes.
+  - `V3__add_sample_users.sql` — Sample data (25 test users) for local development and testing.
 - Hibernate is configured with `ddl-auto: validate` so startup fails if schema and mappings diverge.
 
 ## Production release checklist
@@ -234,6 +237,14 @@ flowchart LR
 
 - Current endpoint version is `/api/v1/users`.
 - Legacy `/api/users` remains temporarily available for backward compatibility.
+- All endpoints support pagination with `?page=0&size=20` query parameters (optional, defaults shown).
+
+## Endpoints
+
+- `POST /api/v1/users` — Create a new user
+- `GET /api/v1/users` — List all users (paginated), e.g., `GET /api/v1/users?page=0&size=10`
+- `GET /api/v1/users/{id}` — Get a user by ID
+- `/api/users` — Legacy paths (deprecated, returns `Deprecation`, `Sunset`, `Link` headers)
 
 ## Postman
 
@@ -253,6 +264,21 @@ mvn -B clean verify
 mvn -pl hex-application spring-boot:run
 ```
 
+## Run with PostgreSQL Profile
+
+Switch to PostgreSQL by activating the `postgresql` profile (instead of default H2 in-memory):
+
+```bash
+mvn -pl hex-application spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=postgresql"
+```
+
+Requires a PostgreSQL server on `localhost:5432` with:
+- Database: `hexdb`
+- User: `hexuser`
+- Password: `hexpassword`
+
+Alternatively, update `hex-application/src/main/resources/application-postgresql.yml` for different credentials/host.
+
 ## Run With Docker Compose
 
 ```bash
@@ -262,9 +288,20 @@ docker compose up --build
 ## Quick test
 
 ```bash
+# Create a user
 curl -i -X POST http://localhost:8080/api/v1/users \
   -H 'Content-Type: application/json' \
   -d '{"email":"alice@example.com","displayName":"Alice"}'
 
+# Get all users (paginated, default page=0, size=20)
+curl -i http://localhost:8080/api/v1/users
+
+# Get page 2 with 5 items per page
+curl -i 'http://localhost:8080/api/v1/users?page=1&size=5'
+
+# Get a user by ID
 curl -i http://localhost:8080/api/v1/users/1
+
+# Legacy endpoint (returns Deprecation headers)
+curl -i http://localhost:8080/api/users/1
 ```

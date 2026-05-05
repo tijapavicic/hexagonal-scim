@@ -2,8 +2,10 @@ package com.example.user.api;
 
 import com.example.user.config.LegacyApiDeprecationProperties;
 import com.example.user.core.UserNotFoundException;
+import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,6 +56,9 @@ class UserControllerAdapterTest {
     @MockBean
     private GetUserPort getUserPort;
 
+    @MockBean
+    private GetAllUsersPort getAllUsersPort;
+
     @Test
     void createReturnsCreatedUser() throws Exception {
         when(createUserPort.create(anyString(), anyString()))
@@ -79,7 +86,55 @@ class UserControllerAdapterTest {
         result.andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
 
-        verifyNoInteractions(createUserPort, getUserPort);
+        verifyNoInteractions(createUserPort, getUserPort, getAllUsersPort);
+    }
+
+    @Test
+    void getAllReturnsPagedUsers() throws Exception {
+        User user1 = new User(1L, "alice@example.com", "Alice");
+        User user2 = new User(2L, "bob@example.com", "Bob");
+        PagedUsers pagedUsers = new PagedUsers(List.of(user1, user2), 0, 10, 2, 1);
+
+        when(getAllUsersPort.getAll(0, 10, true)).thenReturn(pagedUsers);
+
+        ResultActions result = mockMvc.perform(get(VERSIONED_USERS_PATH));
+
+        assertNoLegacyHeaders(result);
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].email").value("alice@example.com"))
+                .andExpect(jsonPath("$.pageNumber").value(0))
+                .andExpect(jsonPath("$.pageSize").value(10))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasPrevious").value(false))
+                .andExpect(jsonPath("$.hasNext").value(false));
+
+        verify(getAllUsersPort).getAll(0, 10, true);
+    }
+
+    @Test
+    void getAllWithPageableFalseReturnsAllUsers() throws Exception {
+        User user1 = new User(1L, "alice@example.com", "Alice");
+        User user2 = new User(2L, "bob@example.com", "Bob");
+        User user3 = new User(3L, "charlie@example.com", "Charlie");
+        PagedUsers allUsers = new PagedUsers(List.of(user1, user2, user3), 0, 3, 3, 1);
+
+        when(getAllUsersPort.getAll(0, 10, false)).thenReturn(allUsers);
+
+        ResultActions result = mockMvc.perform(get(VERSIONED_USERS_PATH).param("pageable", "false"));
+
+        assertNoLegacyHeaders(result);
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasPrevious").value(false))
+                .andExpect(jsonPath("$.hasNext").value(false));
+
+        verify(getAllUsersPort).getAll(0, 10, false);
     }
 
     @Test
@@ -120,4 +175,6 @@ class UserControllerAdapterTest {
                 .andExpect(header().string(LINK_HEADER, legacyApiDeprecationProperties.getSuccessorLink()));
     }
 }
+
+
 

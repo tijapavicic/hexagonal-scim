@@ -1,10 +1,13 @@
 package com.example.user.api;
 
 import com.example.user.api.dto.CreateUserRequest;
+import com.example.user.api.dto.PagedUserResponse;
 import com.example.user.api.dto.UserResponse;
 import com.example.user.config.LegacyApiDeprecationProperties;
+import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,15 +40,18 @@ public class UserControllerAdapter {
 
     private final CreateUserPort createUserPort;
     private final GetUserPort getUserPort;
+    private final GetAllUsersPort getAllUsersPort;
     private final LegacyApiDeprecationProperties legacyApiDeprecationProperties;
 
     public UserControllerAdapter(
             CreateUserPort createUserPort,
             GetUserPort getUserPort,
+            GetAllUsersPort getAllUsersPort,
             LegacyApiDeprecationProperties legacyApiDeprecationProperties
     ) {
         this.createUserPort = createUserPort;
         this.getUserPort = getUserPort;
+        this.getAllUsersPort = getAllUsersPort;
         this.legacyApiDeprecationProperties = legacyApiDeprecationProperties;
     }
 
@@ -63,6 +70,26 @@ public class UserControllerAdapter {
     public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
         User created = createUserPort.create(request.email(), request.displayName());
         return new UserResponse(created.id(), created.email(), created.displayName());
+    }
+
+    @GetMapping
+    public PagedUserResponse getAll(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "pageable", defaultValue = "true") boolean pageable
+    ) {
+        PagedUsers pagedUsers = getAllUsersPort.getAll(page, size, pageable);
+        return new PagedUserResponse(
+                pagedUsers.content().stream()
+                        .map(user -> new UserResponse(user.id(), user.email(), user.displayName()))
+                        .toList(),
+                pagedUsers.pageNumber(),
+                pagedUsers.pageSize(),
+                pagedUsers.totalElements(),
+                pagedUsers.totalPages(),
+                pagedUsers.pageNumber() < pagedUsers.totalPages() - 1,
+                pagedUsers.pageNumber() > 0
+        );
     }
 
     @GetMapping("/{id}")

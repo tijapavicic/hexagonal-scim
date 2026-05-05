@@ -1,8 +1,14 @@
 package com.example.user.adapter.db;
 
+import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.out.UserRepositoryPort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
+import java.util.List;
 import java.util.Optional;
 
 public class UserRepositoryAdapter implements UserRepositoryPort {
@@ -27,5 +33,27 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     @Override
     public boolean existsByEmail(String email) {
         return userJpaRepository.existsByEmailIgnoreCase(email);
+    }
+
+    @Override
+    public PagedUsers findAll(int pageNumber, int pageSize) {
+        int safePage = Math.max(0, pageNumber);
+        int safeSize = Math.max(1, Math.min(pageSize, 100));
+
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by("id").ascending());
+        Page<UserEntity> page = userJpaRepository.findAll(pageable);
+
+        List<User> users = page.getContent().stream()
+                .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getDisplayName()))
+                .toList();
+
+        return new PagedUsers(users, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+    }
+
+    @Override
+    public List<User> findAll() {
+        return userJpaRepository.findAll(Sort.by("id").ascending()).stream()
+                .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getDisplayName()))
+                .toList();
     }
 }

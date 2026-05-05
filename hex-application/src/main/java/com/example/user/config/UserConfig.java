@@ -4,6 +4,7 @@ import com.example.user.adapter.db.UserJpaRepository;
 import com.example.user.adapter.db.UserRepositoryAdapter;
 import com.example.user.core.UserService;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
 import com.example.user.port.out.UserRepositoryPort;
 import org.springframework.context.annotation.Bean;
@@ -19,13 +20,16 @@ public class UserConfig {
 
     @Bean
     public CreateUserPort createUserPort(UserRepositoryPort userRepositoryPort) {
-        UserService userService = new UserService(userRepositoryPort);
-        return userService::create;
+        return new UserService(userRepositoryPort)::create;
     }
 
     @Bean
     public GetUserPort getUserPort(UserRepositoryPort userRepositoryPort) {
-        UserService userService = new UserService(userRepositoryPort);
-        return userService::getById;
+        return new UserService(userRepositoryPort)::getById;
+    }
+
+    @Bean
+    public GetAllUsersPort getAllUsersPort(UserRepositoryPort userRepositoryPort) {
+        return new UserService(userRepositoryPort)::getAll;
     }
 }

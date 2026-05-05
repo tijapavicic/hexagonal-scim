@@ -244,10 +244,13 @@ flowchart LR
 
 ## Endpoints
 
-- `POST /api/v1/users` — Create a new user
-- `GET /api/v1/users` — List all users (paginated), e.g., `GET /api/v1/users?page=0&size=10`
-- `GET /api/v1/users/{id}` — Get a user by ID
-- `/api/users` — Legacy paths (deprecated, returns `Deprecation`, `Sunset`, `Link` headers)
+- `POST   /api/v1/users`        — Create a new user
+- `GET    /api/v1/users`        — List all users (paginated), e.g., `GET /api/v1/users?page=0&size=10`
+- `GET    /api/v1/users/{id}`   — Get a user by ID
+- `PUT    /api/v1/users/{id}`   — Full replacement — both `email` and `displayName` required
+- `PATCH  /api/v1/users/{id}`   — Partial update — at least one of `email` or `displayName`
+- `DELETE /api/v1/users/{id}`   — Delete a user (returns `204 No Content`)
+- `/api/users`                  — Legacy paths (deprecated, returns `Deprecation`, `Sunset`, `Link` headers)
 
 ## API Documentation (Swagger UI)
 
@@ -311,6 +314,19 @@ curl -i 'http://localhost:8080/api/v1/users?page=1&size=5'
 
 # Get a user by ID
 curl -i http://localhost:8080/api/v1/users/1
+
+# Full replacement (PUT)
+curl -i -X PUT http://localhost:8080/api/v1/users/1 \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice2@example.com","displayName":"Alice Renamed"}'
+
+# Partial update (PATCH) — only displayName changes, email is preserved
+curl -i -X PATCH http://localhost:8080/api/v1/users/1 \
+  -H 'Content-Type: application/json' \
+  -d '{"displayName":"Alice Renamed"}'
+
+# Delete a user
+curl -i -X DELETE http://localhost:8080/api/v1/users/1
 
 # Legacy endpoint (returns Deprecation headers)
 curl -i http://localhost:8080/api/users/1

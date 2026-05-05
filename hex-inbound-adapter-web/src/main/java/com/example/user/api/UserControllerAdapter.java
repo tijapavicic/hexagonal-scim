@@ -5,12 +5,17 @@ import com.example.user.api.config.LegacyApiDeprecationProperties;
 import com.example.user.api.dto.CreateUserRequest;
 import com.example.user.api.dto.ErrorResponse;
 import com.example.user.api.dto.PagedUserResponse;
+import com.example.user.api.dto.PatchUserRequest;
+import com.example.user.api.dto.UpdateUserRequest;
 import com.example.user.api.dto.UserResponse;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
+import com.example.user.port.in.PatchUserPort;
+import com.example.user.port.in.UpdateUserPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,10 +28,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -52,6 +60,9 @@ public class UserControllerAdapter {
     private final CreateUserPort createUserPort;
     private final GetUserPort getUserPort;
     private final GetAllUsersPort getAllUsersPort;
+    private final UpdateUserPort updateUserPort;
+    private final PatchUserPort patchUserPort;
+    private final DeleteUserPort deleteUserPort;
     private final LegacyApiDeprecationProperties legacyApiDeprecationProperties;
     private final ApiPaginationProperties apiPaginationProperties;
 
@@ -59,12 +70,18 @@ public class UserControllerAdapter {
             CreateUserPort createUserPort,
             GetUserPort getUserPort,
             GetAllUsersPort getAllUsersPort,
+            UpdateUserPort updateUserPort,
+            PatchUserPort patchUserPort,
+            DeleteUserPort deleteUserPort,
             LegacyApiDeprecationProperties legacyApiDeprecationProperties,
             ApiPaginationProperties apiPaginationProperties
     ) {
         this.createUserPort = createUserPort;
         this.getUserPort = getUserPort;
         this.getAllUsersPort = getAllUsersPort;
+        this.updateUserPort = updateUserPort;
+        this.patchUserPort = patchUserPort;
+        this.deleteUserPort = deleteUserPort;
         this.legacyApiDeprecationProperties = legacyApiDeprecationProperties;
         this.apiPaginationProperties = apiPaginationProperties;
     }
@@ -156,5 +173,75 @@ public class UserControllerAdapter {
             @PathVariable("id") Long id) {
         User user = getUserPort.getById(id);
         return new UserResponse(user.id(), user.email(), user.displayName());
+    }
+
+    @Operation(summary = "Replace a user (full update)",
+            description = "Completely replaces the user with the provided values. Both fields are required.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User replaced",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation failed",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "E-mail already registered",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{id}")
+    public UserResponse update(
+            @Parameter(description = "User ID", example = "1", required = true)
+            @PathVariable("id") Long id,
+            @Valid @RequestBody UpdateUserRequest request) {
+        User updated = updateUserPort.update(id, request.email(), request.displayName());
+        return new UserResponse(updated.id(), updated.email(), updated.displayName());
+    }
+
+    @Operation(summary = "Partially update a user (PATCH)",
+            description = """
+                    Applies a partial update — only the fields included in the request body are changed.
+                    Omitted fields (JSON `null` or missing) retain their existing values.
+                    At least one field must be provided.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User updated",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation failed or no fields provided",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "E-mail already registered",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{id}")
+    public UserResponse patch(
+            @Parameter(description = "User ID", example = "1", required = true)
+            @PathVariable("id") Long id,
+            @Valid @RequestBody PatchUserRequest request) {
+        User patched = patchUserPort.patch(id, request.email(), request.displayName());
+        return new UserResponse(patched.id(), patched.email(), patched.displayName());
+    }
+
+    @Operation(summary = "Delete a user",
+            description = "Permanently deletes the user with the given ID.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "User deleted"),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(
+            @Parameter(description = "User ID", example = "1", required = true)
+            @PathVariable("id") Long id) {
+        deleteUserPort.deleteById(id);
     }
 }

@@ -2,12 +2,16 @@ package com.example.user.api;
 
 import com.example.user.api.config.ApiPaginationProperties;
 import com.example.user.api.config.LegacyApiDeprecationProperties;
+import com.example.user.core.DuplicateUserException;
 import com.example.user.core.UserNotFoundException;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
+import com.example.user.port.in.PatchUserPort;
+import com.example.user.port.in.UpdateUserPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -22,11 +26,15 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,23 +56,16 @@ class UserControllerAdapterTest {
     private static final String SUNSET_HEADER = "Sunset";
     private static final String LINK_HEADER = "Link";
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private LegacyApiDeprecationProperties legacyApiDeprecationProperties;
+    @Autowired private ApiPaginationProperties apiPaginationProperties;
 
-    @Autowired
-    private LegacyApiDeprecationProperties legacyApiDeprecationProperties;
-
-    @Autowired
-    private ApiPaginationProperties apiPaginationProperties;
-
-    @MockBean
-    private CreateUserPort createUserPort;
-
-    @MockBean
-    private GetUserPort getUserPort;
-
-    @MockBean
-    private GetAllUsersPort getAllUsersPort;
+    @MockBean private CreateUserPort createUserPort;
+    @MockBean private GetUserPort getUserPort;
+    @MockBean private GetAllUsersPort getAllUsersPort;
+    @MockBean private UpdateUserPort updateUserPort;
+    @MockBean private PatchUserPort patchUserPort;
+    @MockBean private DeleteUserPort deleteUserPort;
 
     @Test
     void createReturnsCreatedUser() throws Exception {
@@ -173,6 +174,146 @@ class UserControllerAdapterTest {
 
         verify(getUserPort).getById(999L);
     }
+
+    // ─── PUT /{id} ────────────────────────────────────────────────────────────
+
+    @Test
+    void updateReturnsUpdatedUser() throws Exception {
+        when(updateUserPort.update(1L, "new@example.com", "New"))
+                .thenReturn(new User(1L, "new@example.com", "New"));
+
+        ResultActions result = mockMvc.perform(put(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"new@example.com\",\"displayName\":\"New\"}"));
+
+        assertNoLegacyHeaders(result);
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.email").value("new@example.com"))
+                .andExpect(jsonPath("$.displayName").value("New"));
+
+        verify(updateUserPort).update(1L, "new@example.com", "New");
+    }
+
+    @Test
+    void updateReturns404WhenUserNotFound() throws Exception {
+        when(updateUserPort.update(eq(999L), anyString(), anyString()))
+                .thenThrow(new UserNotFoundException("missing"));
+
+        ResultActions result = mockMvc.perform(put(VERSIONED_USERS_PATH + "/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"x@example.com\",\"displayName\":\"X\"}"));
+
+        result.andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void updateReturns409OnDuplicateEmail() throws Exception {
+        when(updateUserPort.update(eq(1L), anyString(), anyString()))
+                .thenThrow(new DuplicateUserException("taken"));
+
+        ResultActions result = mockMvc.perform(put(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"taken@example.com\",\"displayName\":\"X\"}"));
+
+        result.andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_ALREADY_EXISTS"));
+    }
+
+    @Test
+    void updateRejectsInvalidPayload() throws Exception {
+        ResultActions result = mockMvc.perform(put(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"bad\",\"displayName\":\"\"}"));
+
+        result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(updateUserPort);
+    }
+
+    // ─── PATCH /{id} ──────────────────────────────────────────────────────────
+
+    @Test
+    void patchUpdatesDisplayNameOnly() throws Exception {
+        when(patchUserPort.patch(1L, null, "Renamed"))
+                .thenReturn(new User(1L, "alice@example.com", "Renamed"));
+
+        ResultActions result = mockMvc.perform(patch(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"Renamed\"}"));
+
+        assertNoLegacyHeaders(result);
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.displayName").value("Renamed"));
+
+        verify(patchUserPort).patch(1L, null, "Renamed");
+    }
+
+    @Test
+    void patchUpdatesEmailOnly() throws Exception {
+        when(patchUserPort.patch(1L, "new@example.com", null))
+                .thenReturn(new User(1L, "new@example.com", "Alice"));
+
+        ResultActions result = mockMvc.perform(patch(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"new@example.com\"}"));
+
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("new@example.com"));
+
+        verify(patchUserPort).patch(1L, "new@example.com", null);
+    }
+
+    @Test
+    void patchRejects400WhenNoFieldsProvided() throws Exception {
+        ResultActions result = mockMvc.perform(patch(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"));
+
+        result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(patchUserPort);
+    }
+
+    @Test
+    void patchRejectsInvalidEmail() throws Exception {
+        ResultActions result = mockMvc.perform(patch(VERSIONED_USERS_PATH + "/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\"}"));
+
+        result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(patchUserPort);
+    }
+
+    // ─── DELETE /{id} ─────────────────────────────────────────────────────────
+
+    @Test
+    void deleteReturns204OnSuccess() throws Exception {
+        ResultActions result = mockMvc.perform(delete(VERSIONED_USERS_PATH + "/1"));
+
+        assertNoLegacyHeaders(result);
+        result.andExpect(status().isNoContent());
+
+        verify(deleteUserPort).deleteById(1L);
+    }
+
+    @Test
+    void deleteReturns404WhenUserNotFound() throws Exception {
+        doThrow(new UserNotFoundException("missing")).when(deleteUserPort).deleteById(999L);
+
+        ResultActions result = mockMvc.perform(delete(VERSIONED_USERS_PATH + "/999"));
+
+        result.andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    // ─── assertion helpers ────────────────────────────────────────────────────
 
     private void assertNoLegacyHeaders(ResultActions result) throws Exception {
         result.andExpect(header().doesNotExist(DEPRECATION_HEADER))

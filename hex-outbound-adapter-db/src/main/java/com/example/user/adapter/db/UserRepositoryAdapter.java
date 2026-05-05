@@ -56,4 +56,19 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
                 .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getDisplayName()))
                 .toList();
     }
+
+    @Override
+    public User update(User user) {
+        UserEntity entity = userJpaRepository.findById(user.id())
+                .orElseThrow(() -> new IllegalStateException("Entity not found for id: " + user.id()));
+        entity.setEmail(user.email());
+        entity.setDisplayName(user.displayName());
+        UserEntity saved = userJpaRepository.save(entity);
+        return new User(saved.getId(), saved.getEmail(), saved.getDisplayName());
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        userJpaRepository.deleteById(id);
+    }
 }

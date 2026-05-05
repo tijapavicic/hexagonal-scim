@@ -56,8 +56,30 @@ class UserRepositoryAdapterTest {
 
         List<User> all = adapter.findAll();
 
-        // All three inserted rows must be present — no cap, no page cut-off
         assertEquals(3, all.size());
+    }
+
+    @Test
+    void updatePersistsFieldChanges() {
+        User saved = adapter.save(new User(null, "before@example.com", "Before"));
+
+        User updated = adapter.update(new User(saved.id(), "after@example.com", "After"));
+
+        assertEquals("after@example.com", updated.email());
+        assertEquals("After", updated.displayName());
+        assertEquals(saved.id(), updated.id());
+        // verify persisted — re-read from DB
+        User reloaded = adapter.findById(saved.id()).orElseThrow();
+        assertEquals("after@example.com", reloaded.email());
+    }
+
+    @Test
+    void deleteRemovesRow() {
+        User saved = adapter.save(new User(null, "todelete@example.com", "ToDelete"));
+
+        adapter.deleteById(saved.id());
+
+        assertTrue(adapter.findById(saved.id()).isEmpty());
     }
 }
 

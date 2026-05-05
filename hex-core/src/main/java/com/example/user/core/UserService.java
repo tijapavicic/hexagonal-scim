@@ -3,13 +3,19 @@ package com.example.user.core;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
+import com.example.user.port.in.PatchUserPort;
+import com.example.user.port.in.UpdateUserPort;
 import com.example.user.port.out.UserRepositoryPort;
 
 import java.util.List;
 
-public class UserService implements CreateUserPort, GetUserPort, GetAllUsersPort {
+public class UserService
+        implements CreateUserPort, GetUserPort, GetAllUsersPort,
+                   UpdateUserPort, PatchUserPort, DeleteUserPort {
+
     private final UserRepositoryPort userRepositoryPort;
 
     public UserService(UserRepositoryPort userRepositoryPort) {
@@ -21,7 +27,6 @@ public class UserService implements CreateUserPort, GetUserPort, GetAllUsersPort
         if (userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
-
         return userRepositoryPort.save(new User(null, email, displayName));
     }
 
@@ -39,5 +44,37 @@ public class UserService implements CreateUserPort, GetUserPort, GetAllUsersPort
         }
         return userRepositoryPort.findAll(pageNumber, pageSize);
     }
+
+    @Override
+    public User update(Long id, String email, String displayName) {
+        User existing = userRepositoryPort.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found for id: " + id));
+        if (!existing.email().equalsIgnoreCase(email) && userRepositoryPort.existsByEmail(email)) {
+            throw new DuplicateUserException("User already exists for email: " + email);
+        }
+        return userRepositoryPort.update(new User(id, email, displayName));
+    }
+
+    @Override
+    public User patch(Long id, String email, String displayName) {
+        User existing = userRepositoryPort.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found for id: " + id));
+        String newEmail       = email       != null ? email       : existing.email();
+        String newDisplayName = displayName != null ? displayName : existing.displayName();
+        if (email != null && !existing.email().equalsIgnoreCase(email)
+                && userRepositoryPort.existsByEmail(email)) {
+            throw new DuplicateUserException("User already exists for email: " + email);
+        }
+        return userRepositoryPort.update(new User(id, newEmail, newDisplayName));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        if (userRepositoryPort.findById(id).isEmpty()) {
+            throw new UserNotFoundException("User not found for id: " + id);
+        }
+        userRepositoryPort.deleteById(id);
+    }
 }
+
 

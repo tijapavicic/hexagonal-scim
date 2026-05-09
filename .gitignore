@@ -46,3 +46,10 @@ frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 
+### TLS certificates ########################################################
+# The self-signed DEV cert (docker/certs/server.crt + server.key) is committed
+# intentionally — it has no security value (self-signed, local-only).
+# NEVER commit real CA-signed private keys. If you replace these with real certs,
+# add the key file here:
+# docker/certs/*.key
+

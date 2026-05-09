@@ -5,7 +5,7 @@ spring:
     password: hexpassword
     driver-class-name: org.postgresql.Driver
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQL15Dialect
+    # database-platform: auto-detected by Hibernate 6.x — no explicit dialect needed
     hibernate:
       ddl-auto: validate
     open-in-view: false

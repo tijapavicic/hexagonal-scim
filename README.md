@@ -254,8 +254,8 @@ flowchart LR
 
 ## API Documentation (Swagger UI)
 
-- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- **OpenAPI JSON spec**: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+- **Swagger UI**: `http://localhost:8080/swagger-ui.html`
+- **OpenAPI JSON spec**: `http://localhost:8080/api-docs`
 
 Paths are configurable via `springdoc.swagger-ui.path` and `springdoc.api-docs.path` in `application.yml`.
 
@@ -289,16 +289,21 @@ cd frontend && npm install && npm run dev
 ### Run everything with Docker Compose (with auth)
 
 ```bash
-docker compose up --build
+#docker compose up --build
+docker compose down -v && docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend (React) | http://localhost:3000 |
+| Service | URL                    |
+|---------|------------------------|
+| Frontend (React) | https://localhost:3000 |
 | Backend (Spring Boot) | http://localhost:8080 |
-| Keycloak admin | http://localhost:8180 |
+| Keycloak admin | https://localhost:8443 |
 
 Login with `testuser / password` or `adminuser / password` — Keycloak redirects back automatically.
+
+> **Self-signed certificate**: the browser will show a security warning on first visit.  
+> Click **Advanced → Proceed** (Chrome) or **Accept the Risk** (Firefox).  
+> The cert lives in `docker/certs/` and is valid for 10 years.
 
 ## Build
 
@@ -340,13 +345,13 @@ The `hexagonal-scim` realm, two clients, two test users, and two roles are impor
 
 ## Authentication (Keycloak)
 
-> Full guide: [`documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md`](documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md)
+> Full guide: `documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md`
 
 ### Keycloak admin console
 
 | URL | Username | Password |
 |-----|----------|----------|
-| http://localhost:8180 | `admin` | `admin` |
+| https://localhost:8443 | `admin` | `admin` |
 
 ### Test users (realm: `hexagonal-scim`)
 
@@ -359,14 +364,14 @@ The `hexagonal-scim` realm, two clients, two test users, and two roles are impor
 
 ```bash
 # Password grant — testuser
-curl -s -X POST \
-  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+curl -sk -X POST \
+  https://localhost:8443/realms/hexagonal-scim/protocol/openid-connect/token \
   -d "grant_type=password&client_id=hexagonal-scim-public&username=testuser&password=password" \
   | jq -r .access_token
 
 # Client credentials — M2M
-curl -s -X POST \
-  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+curl -sk -X POST \
+  https://localhost:8443/realms/hexagonal-scim/protocol/openid-connect/token \
   -d "grant_type=client_credentials&client_id=hexagonal-scim-app&client_secret=hexagonal-scim-secret" \
   | jq -r .access_token
 ```
@@ -374,8 +379,8 @@ curl -s -X POST \
 ### Store token and call the API
 
 ```bash
-TOKEN=$(curl -s -X POST \
-  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+TOKEN=$(curl -sk -X POST \
+  https://localhost:8443/realms/hexagonal-scim/protocol/openid-connect/token \
   -d "grant_type=password&client_id=hexagonal-scim-public&username=testuser&password=password" \
   | jq -r .access_token)
 
@@ -389,12 +394,29 @@ curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
 | `docker compose up` (Keycloak running) | ✅ Yes — `401` without valid token |
 | `mvn spring-boot:run` (H2, no Keycloak) | ❌ No — open, dev convenience |
 
+> **Self-signed cert**: use `curl -sk` (skip TLS verification) or trust the cert in your OS keychain. See `docker/certs/` for the cert file.
+
 > **Postman**: import `postman/hexagonal-scim.postman_collection.json` and `postman/local-docker.postman_environment.json`.  
 > Run **"Get Token — testuser"** first — it stores the JWT automatically and all subsequent API requests use it.
 
 ---
 
 ## Versions
+
+### v0.0.2 (2026-05-10)
+
+**HTTPS everywhere + Keycloak healthcheck fix**
+
+| Area | What changed |
+|------|--------------|
+| **TLS** | Self-signed dev certificate generated (`docker/certs/server.crt` + `server.key`, RSA 2048, 10 yr, SAN: `localhost`, `keycloak`, `127.0.0.1`) |
+| **Keycloak** | HTTPS on port **8443** (browser-facing). HTTP stays on 8180 internal-only for JWK-set fetch and healthcheck. `KC_HTTPS_CERTIFICATE_FILE/KEY_FILE` env vars configured |
+| **Frontend Nginx** | HTTPS on port **443** (mapped to host 3000). HTTP 80 → 301 redirect. HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy headers added |
+| **Keycloak healthcheck** | Fixed: KC 25 UBI image has no `curl`/`wget`. Replaced with `bash /dev/tcp` probe against the OIDC discovery endpoint on internal HTTP port 8180 |
+| **Spring Boot** | Unchanged — fetches JWK via `http://keycloak:8180` internally (avoids self-signed cert trust issue) |
+| **`docker-compose.yml`** | `VITE_KEYCLOAK_URL` → `https://localhost:8443`, cert volume mounted to KC and Nginx, port mapping `3000:443` |
+
+---
 
 ### v0.0.1 (2026-05-10)
 
@@ -419,8 +441,8 @@ curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
 
 ```bash
 # Get a token first (when running via Docker Compose)
-TOKEN=$(curl -s -X POST \
-  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+TOKEN=$(curl -sk -X POST \
+  https://localhost:8443/realms/hexagonal-scim/protocol/openid-connect/token \
   -d "grant_type=password&client_id=hexagonal-scim-public&username=testuser&password=password" \
   | jq -r .access_token)
 
@@ -457,3 +479,5 @@ curl -i -X DELETE http://localhost:8080/api/v1/users/1 -H "Authorization: Bearer
 # Legacy endpoint (returns Deprecation headers)
 curl -i http://localhost:8080/api/users/1 -H "Authorization: Bearer $TOKEN"
 ```
+
+

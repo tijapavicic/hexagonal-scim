@@ -2,186 +2,101 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "hexagonal-scim",
-    "description": "Full CRUD API + Keycloak authentication for the hexagonal-scim service.\n\n**Quick start (Docker Compose mode)**\n1. Run **Keycloak / Get Token — testuser** — the JWT is stored automatically.\n2. All API requests in other folders inherit the Bearer token.\n\n**Local dev mode (no Keycloak)**\nNo token required. The API is open when started with `mvn spring-boot:run`.",
+    "description": "Full CRUD API + Keycloak authentication for the hexagonal-scim service.\n\n**Quick start (Docker Compose mode)**\n1. Disable SSL verification in Postman: Settings → General → SSL certificate verification → OFF (needed for self-signed cert).\n2. Run **Keycloak / Get Token — testuser** — the JWT is stored automatically in {{accessToken}}.\n3. All API requests inherit the Bearer token from the collection.\n\n**Local dev mode (no Keycloak)**\nNo token required. The API is open when started with `mvn spring-boot:run` (H2, no Keycloak).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{accessToken}}",
-        "type": "string"
-      }
-    ]
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
   },
   "item": [
     {
       "name": "Keycloak",
-      "description": "Token requests against Keycloak. Run one of these first — the JWT is stored in {{accessToken}} and used by all API requests automatically.",
+      "description": "Token requests against Keycloak (https://localhost:8443). Run one of these first.\n\n⚠️ Disable SSL verification in Postman settings (self-signed cert).",
       "item": [
         {
           "name": "Get Token — testuser (password grant)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test(\"access_token present\", () => pm.expect(json).to.have.property(\"access_token\"));",
-                  "pm.collectionVariables.set(\"accessToken\", json.access_token);",
-                  "pm.test(\"Token stored\", () => pm.expect(pm.collectionVariables.get(\"accessToken\")).to.not.be.empty);"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('access_token present', () => pm.expect(json).to.have.property('access_token'));",
+            "pm.collectionVariables.set('accessToken', json.access_token);",
+            "pm.test('Token stored', () => pm.expect(pm.collectionVariables.get('accessToken')).to.not.be.empty);"
+          ]}}],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                { "key": "grant_type", "value": "password",                   "type": "text" },
-                { "key": "client_id",  "value": "{{keycloakPublicClientId}}", "type": "text" },
-                { "key": "username",   "value": "testuser",                   "type": "text" },
-                { "key": "password",   "value": "password",                   "type": "text" }
-              ]
-            },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
-              "host": ["{{keycloakUrl}}"],
-              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
-            },
-            "description": "Password grant for testuser (role: user). Stores JWT in {{accessToken}}."
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "grant_type", "value": "password", "type": "text" },
+              { "key": "client_id",  "value": "{{keycloakPublicClientId}}", "type": "text" },
+              { "key": "username",   "value": "testuser", "type": "text" },
+              { "key": "password",   "value": "password", "type": "text" }
+            ]},
+            "url": { "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token", "host": ["{{keycloakUrl}}"], "path": ["realms","{{realm}}","protocol","openid-connect","token"] }
           }
         },
         {
           "name": "Get Token — adminuser (password grant)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test(\"access_token present\", () => pm.expect(json).to.have.property(\"access_token\"));",
-                  "pm.collectionVariables.set(\"accessToken\", json.access_token);",
-                  "pm.test(\"Token stored\", () => pm.expect(pm.collectionVariables.get(\"accessToken\")).to.not.be.empty);"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.collectionVariables.set('accessToken', json.access_token);",
+            "pm.test('Token stored', () => pm.expect(pm.collectionVariables.get('accessToken')).to.not.be.empty);"
+          ]}}],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                { "key": "grant_type", "value": "password",                   "type": "text" },
-                { "key": "client_id",  "value": "{{keycloakPublicClientId}}", "type": "text" },
-                { "key": "username",   "value": "adminuser",                  "type": "text" },
-                { "key": "password",   "value": "password",                   "type": "text" }
-              ]
-            },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
-              "host": ["{{keycloakUrl}}"],
-              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
-            },
-            "description": "Password grant for adminuser (roles: user + admin). Stores JWT in {{accessToken}}."
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "grant_type", "value": "password", "type": "text" },
+              { "key": "client_id",  "value": "{{keycloakPublicClientId}}", "type": "text" },
+              { "key": "username",   "value": "adminuser", "type": "text" },
+              { "key": "password",   "value": "password", "type": "text" }
+            ]},
+            "url": { "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token", "host": ["{{keycloakUrl}}"], "path": ["realms","{{realm}}","protocol","openid-connect","token"] }
           }
         },
         {
           "name": "Get Token — M2M (client credentials)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test(\"access_token present\", () => pm.expect(json).to.have.property(\"access_token\"));",
-                  "pm.collectionVariables.set(\"accessToken\", json.access_token);",
-                  "pm.test(\"Token stored\", () => pm.expect(pm.collectionVariables.get(\"accessToken\")).to.not.be.empty);"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.collectionVariables.set('accessToken', json.access_token);",
+            "pm.test('Token stored', () => pm.expect(pm.collectionVariables.get('accessToken')).to.not.be.empty);"
+          ]}}],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                { "key": "grant_type",    "value": "client_credentials",          "type": "text" },
-                { "key": "client_id",     "value": "{{keycloakConfClientId}}",     "type": "text" },
-                { "key": "client_secret", "value": "{{keycloakConfClientSecret}}", "type": "text" }
-              ]
-            },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
-              "host": ["{{keycloakUrl}}"],
-              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
-            },
-            "description": "Client credentials grant — no user involved. For CI pipelines and service-to-service calls."
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "grant_type",    "value": "client_credentials", "type": "text" },
+              { "key": "client_id",     "value": "{{keycloakConfClientId}}", "type": "text" },
+              { "key": "client_secret", "value": "{{keycloakConfClientSecret}}", "type": "text" }
+            ]},
+            "url": { "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token", "host": ["{{keycloakUrl}}"], "path": ["realms","{{realm}}","protocol","openid-connect","token"] }
           }
         },
         {
           "name": "Decode Token (userinfo)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"preferred_username present\", () => pm.expect(pm.response.json()).to.have.property(\"preferred_username\"));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('preferred_username present', () => pm.expect(pm.response.json()).to.have.property('preferred_username'));"
+          ]}}],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/userinfo",
-              "host": ["{{keycloakUrl}}"],
-              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "userinfo"]
-            },
-            "description": "Returns claims for the current {{accessToken}}. Uses Bearer auth from collection."
+            "method": "GET", "header": [],
+            "url": { "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/userinfo", "host": ["{{keycloakUrl}}"], "path": ["realms","{{realm}}","protocol","openid-connect","userinfo"] }
           }
         },
         {
           "name": "OIDC Discovery",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"issuer present\", () => pm.expect(pm.response.json()).to.have.property(\"issuer\"));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('issuer present', () => pm.expect(pm.response.json()).to.have.property('issuer'));"
+          ]}}],
           "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/{{realm}}/.well-known/openid-configuration",
-              "host": ["{{keycloakUrl}}"],
-              "path": ["realms", "{{realm}}", ".well-known", "openid-configuration"]
-            },
-            "description": "Public OIDC discovery document — no token needed."
+            "auth": { "type": "noauth" }, "method": "GET", "header": [],
+            "url": { "raw": "{{keycloakUrl}}/realms/{{realm}}/.well-known/openid-configuration", "host": ["{{keycloakUrl}}"], "path": ["realms","{{realm}}",".well-known","openid-configuration"] }
           }
         }
       ]
@@ -193,339 +108,155 @@
         {
           "name": "Create user",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const suffix = Date.now() + '-' + Math.floor(Math.random() * 100000);",
-                  "pm.collectionVariables.set('uniqueEmail', 'user.' + suffix + '@example.com');"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "var json = pm.response.json();",
-                  "pm.test('has id, email, displayName', () => {",
-                  "  pm.expect(json).to.have.property('id');",
-                  "  pm.expect(json).to.have.property('email');",
-                  "  pm.expect(json).to.have.property('displayName');",
-                  "});",
-                  "pm.test('no deprecation headers', () => {",
-                  "  pm.expect(pm.response.headers.get('Deprecation')).to.be.null;",
-                  "  pm.expect(pm.response.headers.get('Sunset')).to.be.null;",
-                  "});",
-                  "pm.collectionVariables.set('userId', String(json.id));"
-                ]
-              }
-            }
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "const suffix = Date.now() + '-' + Math.floor(Math.random() * 100000);",
+              "pm.collectionVariables.set('uniqueEmail', 'user.' + suffix + '@example.com');"
+            ]}},
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "var json = pm.response.json();",
+              "pm.test('has id, email, displayName', () => { pm.expect(json).to.have.property('id'); pm.expect(json).to.have.property('email'); pm.expect(json).to.have.property('displayName'); });",
+              "pm.test('no deprecation headers', () => { pm.expect(pm.response.headers.get('Deprecation')).to.be.null; pm.expect(pm.response.headers.get('Sunset')).to.be.null; });",
+              "pm.collectionVariables.set('userId', String(json.id));"
+            ]}}
           ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Alice\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"]
-            }
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Alice\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] }
           }
         },
         {
           "name": "Get all users (paginated)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test('has pagination fields', () => {",
-                  "  pm.expect(json).to.have.property('content');",
-                  "  pm.expect(json).to.have.property('pageNumber');",
-                  "  pm.expect(json).to.have.property('pageSize');",
-                  "  pm.expect(json).to.have.property('totalElements');",
-                  "  pm.expect(json).to.have.property('totalPages');",
-                  "  pm.expect(json).to.have.property('hasNext');",
-                  "  pm.expect(json).to.have.property('hasPrevious');",
-                  "});",
-                  "pm.test('content is array', () => pm.expect(json.content).to.be.an('array'));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('has pagination fields', () => { pm.expect(json).to.have.property('content'); pm.expect(json).to.have.property('pageNumber'); pm.expect(json).to.have.property('pageSize'); pm.expect(json).to.have.property('totalElements'); pm.expect(json).to.have.property('totalPages'); pm.expect(json).to.have.property('hasNext'); pm.expect(json).to.have.property('hasPrevious'); });",
+            "pm.test('content is array', () => pm.expect(json.content).to.be.an('array'));"
+          ]}}],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users?page=0&size=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"],
-              "query": [
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "10" }
-              ]
-            }
+            "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users?page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api","v1","users"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"}] }
           }
         },
         {
           "name": "Get all users (unpaged — all records)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test('content length equals totalElements', () => {",
-                  "  pm.expect(json.content.length).to.equal(json.totalElements);",
-                  "});",
-                  "pm.test('totalPages is 1', () => pm.expect(json.totalPages).to.equal(1));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('content length equals totalElements', () => pm.expect(json.content.length).to.equal(json.totalElements));",
+            "pm.test('totalPages is 1', () => pm.expect(json.totalPages).to.equal(1));"
+          ]}}],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users?pageable=false",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"],
-              "query": [{ "key": "pageable", "value": "false" }]
-            }
+            "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users?pageable=false", "host": ["{{baseUrl}}"], "path": ["api","v1","users"], "query": [{"key":"pageable","value":"false"}] }
           }
         },
         {
           "name": "Get user by id",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test('id matches {{userId}}', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
-                  "pm.test('has email and displayName', () => {",
-                  "  pm.expect(json).to.have.property('email');",
-                  "  pm.expect(json).to.have.property('displayName');",
-                  "});",
-                  "pm.test('no deprecation headers', () => {",
-                  "  pm.expect(pm.response.headers.get('Deprecation')).to.be.null;",
-                  "  pm.expect(pm.response.headers.get('Sunset')).to.be.null;",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('id matches', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
+            "pm.test('has email and displayName', () => { pm.expect(json).to.have.property('email'); pm.expect(json).to.have.property('displayName'); });",
+            "pm.test('no deprecation headers', () => { pm.expect(pm.response.headers.get('Deprecation')).to.be.null; pm.expect(pm.response.headers.get('Sunset')).to.be.null; });"
+          ]}}],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "{{userId}}"]
-            }
+            "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{userId}}"] }
           }
         },
         {
           "name": "Update user — full (PUT)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test('id unchanged', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
-                  "pm.test('displayName updated', () => pm.expect(json.displayName).to.eql('Alice Updated'));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('id unchanged', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
+            "pm.test('displayName updated', () => pm.expect(json.displayName).to.eql('Alice Updated'));"
+          ]}}],
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"alice-updated-{{$timestamp}}@example.com\",\n  \"displayName\": \"Alice Updated\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "{{userId}}"]
-            }
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice-updated-{{$timestamp}}@example.com\",\n  \"displayName\": \"Alice Updated\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{userId}}"] }
           }
         },
         {
           "name": "Update user — partial (PATCH)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test('id unchanged', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
-                  "pm.test('displayName patched', () => pm.expect(json.displayName).to.eql('Alice Patched'));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('id unchanged', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
+            "pm.test('displayName patched', () => pm.expect(json.displayName).to.eql('Alice Patched'));"
+          ]}}],
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"displayName\": \"Alice Patched\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "{{userId}}"]
-            }
+            "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"Alice Patched\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{userId}}"] }
           }
         },
         {
           "name": "Delete user",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 204', () => pm.response.to.have.status(204));",
-                  "pm.test('body is empty', () => pm.expect(pm.response.text()).to.be.empty);"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 204', () => pm.response.to.have.status(204));",
+            "pm.test('body is empty', () => pm.expect(pm.response.text()).to.be.empty);"
+          ]}}],
           "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "{{userId}}"]
-            }
+            "method": "DELETE", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{userId}}"] }
           }
         },
         {
           "name": "Get user by id — 404 (after delete)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
-                  "pm.test('error code USER_NOT_FOUND', () => {",
-                  "  pm.expect(pm.response.json().code).to.eql('USER_NOT_FOUND');",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));",
+            "pm.test('error code USER_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('USER_NOT_FOUND'));"
+          ]}}],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "{{userId}}"]
-            }
+            "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{userId}}"] }
           }
         }
       ]
     },
     {
       "name": "Legacy API",
-      "description": "Deprecated endpoints — same functionality, returns Deprecation + Sunset + Link headers.",
+      "description": "Deprecated endpoints — same functionality as v1 but returns Deprecation + Sunset + Link headers.",
       "item": [
         {
           "name": "Create user (legacy)",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const suffix = Date.now() + '-' + Math.floor(Math.random() * 100000);",
-                  "pm.collectionVariables.set('uniqueEmail', 'legacy.' + suffix + '@example.com');"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "var json = pm.response.json();",
-                  "pm.collectionVariables.set('userId', String(json.id));",
-                  "pm.test('deprecation headers present', () => {",
-                  "  pm.expect(pm.response.headers.get('Deprecation')).to.exist;",
-                  "  pm.expect(pm.response.headers.get('Sunset')).to.exist;",
-                  "  pm.expect(pm.response.headers.get('Link')).to.exist;",
-                  "});"
-                ]
-              }
-            }
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "const suffix = Date.now() + '-' + Math.floor(Math.random() * 100000);",
+              "pm.collectionVariables.set('uniqueEmail', 'legacy.' + suffix + '@example.com');"
+            ]}},
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('userId', String(json.id));",
+              "pm.test('deprecation headers present', () => { pm.expect(pm.response.headers.get('Deprecation')).to.exist; pm.expect(pm.response.headers.get('Sunset')).to.exist; pm.expect(pm.response.headers.get('Link')).to.exist; });"
+            ]}}
           ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Legacy Alice\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users"]
-            }
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Legacy Alice\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api","users"] }
           }
         },
         {
           "name": "Get user by id (legacy)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "var json = pm.response.json();",
-                  "pm.test('id matches {{userId}}', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
-                  "pm.test('deprecation headers present', () => {",
-                  "  pm.expect(pm.response.headers.get('Deprecation')).to.exist;",
-                  "  pm.expect(pm.response.headers.get('Sunset')).to.exist;",
-                  "  pm.expect(pm.response.headers.get('Link')).to.exist;",
-                  "});"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "var json = pm.response.json();",
+            "pm.test('id matches', () => pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('userId')));",
+            "pm.test('deprecation headers present', () => { pm.expect(pm.response.headers.get('Deprecation')).to.exist; pm.expect(pm.response.headers.get('Sunset')).to.exist; pm.expect(pm.response.headers.get('Link')).to.exist; });"
+          ]}}],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
-            }
+            "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","users","{{userId}}"] }
           }
         }
       ]
@@ -536,307 +267,38 @@
       "item": [
         {
           "name": "Health check",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+          ]}}],
           "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/actuator/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["actuator", "health"]
-            }
+            "auth": { "type": "noauth" }, "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator","health"] }
           }
         },
         {
           "name": "OpenAPI spec",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('openapi field present', () => pm.expect(pm.response.json()).to.have.property('openapi'));"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('openapi field present', () => pm.expect(pm.response.json()).to.have.property('openapi'));"
+          ]}}],
           "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api-docs",
-              "host": ["{{baseUrl}}"],
-              "path": ["api-docs"]
-            }
+            "auth": { "type": "noauth" }, "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api-docs", "host": ["{{baseUrl}}"], "path": ["api-docs"] }
           }
         }
       ]
     }
   ],
   "variable": [
-    { "key": "baseUrl",                   "value": "http://localhost:8080" },
-    { "key": "keycloakUrl",              "value": "http://localhost:8180" },
-    { "key": "realm",                    "value": "hexagonal-scim" },
-    { "key": "keycloakPublicClientId",   "value": "hexagonal-scim-public" },
-    { "key": "keycloakConfClientId",     "value": "hexagonal-scim-app" },
-    { "key": "keycloakConfClientSecret", "value": "hexagonal-scim-secret" },
-    { "key": "accessToken",              "value": "" },
-    { "key": "userId",                   "value": "1" },
-    { "key": "uniqueEmail",              "value": "" }
-  ]
-}
-        {
-          "name": "Create user (v1)",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (!pm.environment.get(\"uniqueEmail\")) {",
-                  "  const suffix = Date.now() + \"-\" + Math.floor(Math.random() * 100000);",
-                  "  pm.environment.set(\"uniqueEmail\", \"user.\" + suffix + \"@example.com\");",
-                  "}"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status code is 201\", function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "var json = pm.response.json();",
-                  "",
-                  "pm.test(\"Response has id\", function () {",
-                  "  pm.expect(json).to.have.property(\"id\");",
-                  "  pm.expect(json.id).to.not.equal(null);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has email and displayName\", function () {",
-                  "  pm.expect(json).to.have.property(\"email\");",
-                  "  pm.expect(json).to.have.property(\"displayName\");",
-                  "});",
-                  "",
-                  "pm.collectionVariables.set(\"userId\", String(json.id));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Alice\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get user by id (v1)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "var json = pm.response.json();",
-                  "",
-                  "pm.test(\"Response id matches variable\", function () {",
-                  "  pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"userId\"));",
-                  "});",
-                  "",
-                  "pm.test(\"Response has email and displayName\", function () {",
-                  "  pm.expect(json).to.have.property(\"email\");",
-                  "  pm.expect(json).to.have.property(\"displayName\");",
-                  "});",
-                  "",
-                  "pm.test(\"No deprecation headers on v1\", function () {",
-                  "  pm.expect(pm.response.headers.get(\"Deprecation\")).to.eql(null);",
-                  "  pm.expect(pm.response.headers.get(\"Sunset\")).to.eql(null);",
-                  "  pm.expect(pm.response.headers.get(\"Link\")).to.eql(null);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "{{userId}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Legacy API",
-      "item": [
-        {
-          "name": "Create user (legacy)",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (!pm.environment.get(\"uniqueEmail\")) {",
-                  "  const suffix = Date.now() + \"-\" + Math.floor(Math.random() * 100000);",
-                  "  pm.environment.set(\"uniqueEmail\", \"legacy.user.\" + suffix + \"@example.com\");",
-                  "}"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status code is 201\", function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "var json = pm.response.json();",
-                  "pm.collectionVariables.set(\"userId\", String(json.id));",
-                  "",
-                  "pm.test(\"Legacy response includes deprecation headers\", function () {",
-                  "  pm.expect(pm.response.headers.get(\"Deprecation\")).to.exist;",
-                  "  pm.expect(pm.response.headers.get(\"Sunset\")).to.exist;",
-                  "  pm.expect(pm.response.headers.get(\"Link\")).to.exist;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{uniqueEmail}}\",\n  \"displayName\": \"Legacy Alice\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "users"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get user by id (legacy)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "var json = pm.response.json();",
-                  "",
-                  "pm.test(\"Response id matches variable\", function () {",
-                  "  pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"userId\"));",
-                  "});",
-                  "",
-                  "pm.test(\"Legacy response includes deprecation headers\", function () {",
-                  "  pm.expect(pm.response.headers.get(\"Deprecation\")).to.exist;",
-                  "  pm.expect(pm.response.headers.get(\"Sunset\")).to.exist;",
-                  "  pm.expect(pm.response.headers.get(\"Link\")).to.exist;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "{{userId}}"
-              ]
-            }
-          }
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080"
-    },
-    {
-      "key": "userId",
-      "value": "1"
-    },
-    {
-      "key": "uniqueEmail",
-      "value": ""
-    }
+    { "key": "baseUrl",                   "value": "http://localhost:8080",  "description": "Spring Boot API base URL" },
+    { "key": "keycloakUrl",              "value": "https://localhost:8443", "description": "Keycloak HTTPS URL (Docker Compose)" },
+    { "key": "realm",                    "value": "hexagonal-scim",         "description": "Keycloak realm name" },
+    { "key": "keycloakPublicClientId",   "value": "hexagonal-scim-public",  "description": "Public PKCE client" },
+    { "key": "keycloakConfClientId",     "value": "hexagonal-scim-app",     "description": "Confidential client (M2M)" },
+    { "key": "keycloakConfClientSecret", "value": "hexagonal-scim-secret",  "description": "Secret for confidential client" },
+    { "key": "accessToken",              "value": "",                       "description": "Populated automatically by Get Token requests" },
+    { "key": "userId",                   "value": "1",                      "description": "Populated automatically by Create user" },
+    { "key": "uniqueEmail",              "value": "",                       "description": "Populated automatically by pre-request scripts" }
   ]
 }

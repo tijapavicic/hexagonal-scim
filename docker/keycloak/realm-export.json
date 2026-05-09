@@ -43,10 +43,14 @@
       "serviceAccountsEnabled": false,
       "protocol": "openid-connect",
       "redirectUris": [
+        "http://localhost:3000/*",
+        "https://localhost:3000/*",
         "http://localhost:8080/*",
         "http://localhost:8080/swagger-ui/oauth2-redirect.html"
       ],
       "webOrigins": [
+        "http://localhost:3000",
+        "https://localhost:3000",
         "http://localhost:8080"
       ]
     },

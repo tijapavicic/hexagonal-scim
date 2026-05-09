@@ -17,11 +17,14 @@ COPY . .
 RUN mvn -B --no-transfer-progress clean package -DskipTests
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-# eclipse-temurin:17-jre-alpine is ~100 MB smaller than the full JDK image.
-FROM eclipse-temurin:17-jre-alpine AS runtime
+# eclipse-temurin:17-jre-jammy (Ubuntu 22.04 LTS) ships a native arm64 manifest
+# and an amd64 manifest — works on Apple Silicon and x86-64 CI runners without
+# emulation.  The Alpine variant (17-jre-alpine) is amd64-only and fails on arm64.
+FROM eclipse-temurin:17-jre-jammy AS runtime
 
 # Run as a non-root user — principle of least privilege.
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Ubuntu syntax: addgroup/adduser are Debian-style (no -S flag).
+RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
 
 WORKDIR /app
 COPY --from=build /workspace/hex-application/target/*.jar app.jar

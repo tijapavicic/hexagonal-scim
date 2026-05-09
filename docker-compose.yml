@@ -53,9 +53,13 @@ services:
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
 
-      # ── Bootstrap admin (first-run only; credentials are stored in DB after) ─
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # ── Bootstrap admin ─────────────────────────────────────────────────────
+      # KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD create a PERMANENT admin in the
+      # master realm on first start (when the keycloak DB is empty).
+      # KC_BOOTSTRAP_ADMIN_* is the KC 26+ replacement; KC 25 with PostgreSQL
+      # ignores it silently — the legacy vars are required here.
+      KEYCLOAK_ADMIN:          admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
 
       # ── HTTP ────────────────────────────────────────────────────────────────
       # Use 8180 internally so Keycloak does NOT clash with the app on 8080.

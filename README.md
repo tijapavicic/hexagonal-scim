@@ -259,11 +259,11 @@ flowchart LR
 
 Paths are configurable via `springdoc.swagger-ui.path` and `springdoc.api-docs.path` in `application.yml`.
 
-
+## Postman
 
 - Collection: `postman/hexagonal-scim.postman_collection.json`
-- Environment: `postman/local.postman_environment.json`
-- Create requests generate `uniqueEmail` automatically when it is empty.
+- Environments: `postman/local.postman_environment.json` (no auth), `postman/local-docker.postman_environment.json` (with Keycloak)
+- Run **Keycloak → Get Token — testuser** first; the JWT is stored automatically and used by all API requests.
 
 ## Build
 
@@ -298,45 +298,106 @@ Alternatively, update `hex-application/src/main/resources/application-postgresql
 docker compose up --build
 ```
 
-Starts three services: **PostgreSQL**, **Keycloak** (port 8180), and the **Spring Boot app** (port 8080).  
-The `hexagonal-scim` Keycloak realm is imported automatically on first start.
+Starts three services: **PostgreSQL** (5432), **Keycloak** (8180), and the **Spring Boot app** (8080).  
+The `hexagonal-scim` realm, two clients, two test users, and two roles are imported automatically.
 
-See **[`documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md`](documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md)** for:
-- How to get an access token (curl / Postman)
-- Test user credentials
-- Admin console walkthrough
-- How to wire Spring Security once you are ready
+---
+
+## Authentication (Keycloak)
+
+> Full guide: [`documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md`](documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md)
+
+### Keycloak admin console
+
+| URL | Username | Password |
+|-----|----------|----------|
+| http://localhost:8180 | `admin` | `admin` |
+
+### Test users (realm: `hexagonal-scim`)
+
+| Username | Password | Roles |
+|----------|----------|-------|
+| `testuser` | `password` | `user` |
+| `adminuser` | `password` | `user`, `admin` |
+
+### Get an access token
+
+```bash
+# Password grant — testuser
+curl -s -X POST \
+  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=hexagonal-scim-public&username=testuser&password=password" \
+  | jq -r .access_token
+
+# Client credentials — M2M
+curl -s -X POST \
+  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+  -d "grant_type=client_credentials&client_id=hexagonal-scim-app&client_secret=hexagonal-scim-secret" \
+  | jq -r .access_token
+```
+
+### Store token and call the API
+
+```bash
+TOKEN=$(curl -s -X POST \
+  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=hexagonal-scim-public&username=testuser&password=password" \
+  | jq -r .access_token)
+
+curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
+```
+
+### Security behaviour
+
+| Startup mode | JWT enforced? |
+|---|---|
+| `docker compose up` (Keycloak running) | ✅ Yes — `401` without valid token |
+| `mvn spring-boot:run` (H2, no Keycloak) | ❌ No — open, dev convenience |
+
+> **Postman**: import `postman/hexagonal-scim.postman_collection.json` and `postman/local-docker.postman_environment.json`.  
+> Run **"Get Token — testuser"** first — it stores the JWT automatically and all subsequent API requests use it.
+
+---
 
 ## Quick test
 
 ```bash
+# Get a token first (when running via Docker Compose)
+TOKEN=$(curl -s -X POST \
+  http://localhost:8180/realms/hexagonal-scim/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=hexagonal-scim-public&username=testuser&password=password" \
+  | jq -r .access_token)
+
 # Create a user
 curl -i -X POST http://localhost:8080/api/v1/users \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"email":"alice@example.com","displayName":"Alice"}'
 
-# Get all users (paginated, default page=0, size=20)
-curl -i http://localhost:8080/api/v1/users
+# Get all users (paginated, default page=0, size=10)
+curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
 
 # Get page 2 with 5 items per page
-curl -i 'http://localhost:8080/api/v1/users?page=1&size=5'
+curl -i "http://localhost:8080/api/v1/users?page=1&size=5" -H "Authorization: Bearer $TOKEN"
 
 # Get a user by ID
-curl -i http://localhost:8080/api/v1/users/1
+curl -i http://localhost:8080/api/v1/users/1 -H "Authorization: Bearer $TOKEN"
 
 # Full replacement (PUT)
 curl -i -X PUT http://localhost:8080/api/v1/users/1 \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"email":"alice2@example.com","displayName":"Alice Renamed"}'
 
 # Partial update (PATCH) — only displayName changes, email is preserved
 curl -i -X PATCH http://localhost:8080/api/v1/users/1 \
   -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"displayName":"Alice Renamed"}'
 
 # Delete a user
-curl -i -X DELETE http://localhost:8080/api/v1/users/1
+curl -i -X DELETE http://localhost:8080/api/v1/users/1 -H "Authorization: Bearer $TOKEN"
 
 # Legacy endpoint (returns Deprecation headers)
-curl -i http://localhost:8080/api/users/1
+curl -i http://localhost:8080/api/users/1 -H "Authorization: Bearer $TOKEN"
 ```

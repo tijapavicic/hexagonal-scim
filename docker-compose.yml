@@ -42,8 +42,10 @@ services:
     image: quay.io/keycloak/keycloak:25.0.6
     container_name: hexagonal-scim-keycloak
     # start-dev: no TLS required, relaxed hostname checks, live-reload config.
+    # --import-realm: on every start Keycloak checks /opt/keycloak/data/import/;
+    #   if the realm already exists in the DB it is skipped (idempotent).
     # Suitable for development; use 'start' (with a build stage) for production.
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       # ── Database ────────────────────────────────────────────────────────────
       KC_DB:          postgres
@@ -64,6 +66,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # Realm import: Keycloak reads this on every start-dev.
+      # If the realm already exists in the DB the import is skipped (idempotent).
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/hexagonal-scim-realm.json:ro
     healthcheck:
       # /health/ready returns HTTP 200 {"status":"UP"} when Keycloak is ready.
       # start_period absorbs first-time schema creation which can take >60 s.

@@ -298,6 +298,15 @@ Alternatively, update `hex-application/src/main/resources/application-postgresql
 docker compose up --build
 ```
 
+Starts three services: **PostgreSQL**, **Keycloak** (port 8180), and the **Spring Boot app** (port 8080).  
+The `hexagonal-scim` Keycloak realm is imported automatically on first start.
+
+See **[`documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md`](documenttaion/KEYCLOAK_LOCAL_DEVELOPMENT.md)** for:
+- How to get an access token (curl / Postman)
+- Test user credentials
+- Admin console walkthrough
+- How to wire Spring Security once you are ready
+
 ## Quick test
 
 ```bash

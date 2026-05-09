@@ -93,10 +93,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      # service_started: the app does not yet enforce JWT on startup.
-      # Change to service_healthy once Spring Security OAuth2 is wired in.
       keycloak:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL:      jdbc:postgresql://db:5432/hexagonal_scim

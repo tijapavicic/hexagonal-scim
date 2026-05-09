@@ -27,10 +27,10 @@
 
 ### The problem Keycloak solves
 
-The API currently accepts any request without authentication. Before adding
-`spring-boot-starter-oauth2-resource-server`, the entire Keycloak infrastructure
-needs to be running and pre-configured so that the Spring Security integration
-can be dropped in with a single dependency and one config class.
+The API uses JWT authentication enforced by Spring Security OAuth2 Resource Server.
+Every request to a protected endpoint must carry a valid `Authorization: Bearer <token>` header.
+Keycloak is the identity provider that issues those tokens — it is the only thing you need to
+start before making authenticated API calls.
 
 ### What is already done
 
@@ -420,68 +420,74 @@ Then review the diff, commit, and the whole team gets your changes on next `dock
 
 ---
 
-## 12. Next Step — Wire Spring Security
+## 12. Spring Security — What Is Already Wired
 
-When you're ready to enforce JWT authentication on the API, these are the **only three changes** needed — everything else is already in place:
+Spring Security OAuth2 Resource Server is already active in the application. Here is what was implemented and why each decision was made.
 
-### Step 1 — Add the dependency to `hex-inbound-adapter-web/pom.xml`
+### What is in place
 
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-</dependency>
-```
+| File | What it does |
+|------|-------------|
+| `hex-inbound-adapter-web/pom.xml` | `spring-boot-starter-oauth2-resource-server` dependency |
+| `com.example.user.api.config.SecurityConfig` | `SecurityFilterChain` bean — stateless JWT, permitAll for health/docs, authenticated for everything else |
+| `docker-compose.yml` | `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` environment variable |
+| `docker-compose.yml` | `keycloak: condition: service_healthy` — app waits for Keycloak before starting |
 
-### Step 2 — Create `SecurityConfig` in `com.example.user.api.config`
+### How `SecurityConfig` is activated
 
 ```java
-@Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
-public class SecurityConfig {
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(s -> s.sessionCreationPolicy(STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/swagger-ui/**", "/api-docs/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-            );
-        return http.build();
-    }
-
-    private JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter converter = new JwtGrantedAuthoritiesConverter();
-        converter.setAuthoritiesClaimName("realm_access.roles");
-        converter.setAuthorityPrefix("ROLE_");
-        JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
-        jwtConverter.setJwtGrantedAuthoritiesConverter(converter);
-        return jwtConverter;
-    }
-}
+@ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.issuer-uri")
+public class SecurityConfig { ... }
 ```
 
-### Step 3 — Update `docker-compose.yml` app dependency
+The config is active **only when the `issuer-uri` property is set**. This means:
 
-```yaml
-# Change this:
-keycloak:
-  condition: service_started
+| Startup mode | Security active? |
+|---|---|
+| `docker compose up` | ✅ Yes — env var is set in compose |
+| `mvn spring-boot:run` (H2 mode, no Keycloak) | ❌ No — no env var → no filter chain → dev convenience |
 
-# To this (app now waits until Keycloak is fully ready):
-keycloak:
-  condition: service_healthy
+### Role extraction from Keycloak JWT
+
+Keycloak puts realm roles in a nested claim:
+```json
+{ "realm_access": { "roles": ["user", "admin"] } }
 ```
 
-Spring Boot will automatically read `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI`
-(already set in compose) and configure the JWT decoder.  
-No `application.yml` changes are needed.
+`SecurityConfig` converts each role to a Spring Security authority:
+```
+user   → ROLE_USER
+admin  → ROLE_ADMIN
+```
+This enables method-level security on any controller method:
+```java
+@PreAuthorize("hasRole('ADMIN')")
+@DeleteMapping("/{id}")
+public ResponseEntity<Void> delete(@PathVariable Long id) { ... }
+```
+
+### Public endpoints (no token required)
+
+```
+/actuator/health        ← Docker Compose healthcheck probe
+/actuator/info
+/swagger-ui/**          ← API documentation browser
+/swagger-ui.html
+/api-docs/**
+```
+
+Everything else requires a valid JWT from the `hexagonal-scim` Keycloak realm.
+
+### Swagger UI — Authorize button
+
+`OpenApiConfig` declares two security schemes:
+
+| Scheme | How to use |
+|--------|-----------|
+| `bearerAuth` | Paste a raw JWT token from `curl` |
+| `keycloak` (Password flow) | Enter `testuser` / `password` directly in Swagger UI — it fetches the token for you |
+
+Click **Authorize** at the top of http://localhost:8080/swagger-ui.html.
 
 ---
 

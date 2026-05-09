@@ -1,6 +1,6 @@
 package com.example.user.api.config;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -19,28 +19,40 @@ import java.util.stream.Collectors;
 /**
  * OAuth2 JWT resource server security configuration.
  *
- * <p>Active only when {@code spring.security.oauth2.resourceserver.jwt.issuer-uri}
- * is set in the environment — which happens automatically when the application is
- * started via Docker Compose (the variable is pre-wired in {@code docker-compose.yml}).
- *
- * <p>When the property is absent (plain {@code mvn spring-boot:run} with H2, no Keycloak),
- * this configuration is skipped, keeping local development friction-free.
- *
- * <h2>Public endpoints</h2>
+ * <p>Active when <em>either</em>:
  * <ul>
- *   <li>{@code /actuator/health} — liveness probe used by Docker Compose healthcheck</li>
- *   <li>{@code /swagger-ui/**}, {@code /api-docs/**} — API documentation</li>
+ *   <li>{@code spring.security.oauth2.resourceserver.jwt.issuer-uri} is set, <em>or</em></li>
+ *   <li>{@code spring.security.oauth2.resourceserver.jwt.jwk-set-uri} is set.</li>
+ * </ul>
+ *
+ * <p>Using {@code jwk-set-uri} (without {@code issuer-uri}) in Docker Compose solves the
+ * split-network issuer-mismatch problem: the browser obtains tokens from
+ * {@code http://localhost:8180} (so {@code iss} = {@code http://localhost:8180/realms/…}),
+ * while the Spring app fetches JWKS from the Docker-internal host
+ * {@code http://keycloak:8180/…}.  Configuring only {@code jwk-set-uri} performs signature
+ * validation without an issuer-equality check, which is correct for a local dev environment.
+ *
+ * <p>When neither property is set (plain {@code mvn spring-boot:run} with H2),
+ * this configuration is skipped and {@link NoSecurityConfig} provides a permit-all fallback.
+ *
+ * <h2>Public endpoints (no token required)</h2>
+ * <ul>
+ *   <li>{@code /actuator/health}, {@code /actuator/info}</li>
+ *   <li>{@code /swagger-ui/**}, {@code /api-docs/**}</li>
  * </ul>
  *
  * <h2>Role extraction</h2>
- * Keycloak embeds realm roles in the JWT under {@code realm_access.roles}.
- * The converter maps each role to a Spring Security {@code ROLE_<UPPERCASE>} authority,
- * enabling {@code @PreAuthorize("hasRole('admin')")} annotations on controller methods.
+ * Keycloak embeds realm roles under {@code realm_access.roles} in the JWT.
+ * Each role is mapped to {@code ROLE_<UPPERCASE>}, enabling
+ * {@code @PreAuthorize("hasRole('admin')")} on controller methods.
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.issuer-uri")
+@ConditionalOnExpression(
+        "!'${spring.security.oauth2.resourceserver.jwt.issuer-uri:}'.isEmpty()" +
+        " || !'${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}'.isEmpty()"
+)
 public class SecurityConfig {
 
     @Bean
@@ -89,4 +101,3 @@ public class SecurityConfig {
         return converter;
     }
 }
-

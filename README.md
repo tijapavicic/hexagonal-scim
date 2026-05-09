@@ -265,6 +265,41 @@ Paths are configurable via `springdoc.swagger-ui.path` and `springdoc.api-docs.p
 - Environments: `postman/local.postman_environment.json` (no auth), `postman/local-docker.postman_environment.json` (with Keycloak)
 - Run **Keycloak → Get Token — testuser** first; the JWT is stored automatically and used by all API requests.
 
+## Frontend
+
+A React + TypeScript single-page application is included in the `frontend/` directory.
+
+**Technology stack**: React 18 · Vite · TypeScript · Tailwind CSS · keycloak-js · TanStack Query · React Router
+
+**Features**: Keycloak SSO login (PKCE), paginated user table, create / edit / delete modals, role badges in navbar, automatic token refresh.
+
+### Run frontend in development mode
+
+```bash
+# Terminal 1 — backend (H2, no auth)
+mvn -pl hex-application spring-boot:run
+
+# Terminal 2 — frontend dev server with hot-reload (port 3000)
+cd frontend && npm install && npm run dev
+```
+
+> In dev mode the Vite proxy forwards `/api/*` to `http://localhost:8080`, so there is no CORS issue.  
+> Auth is disabled on the backend when started without Keycloak, so no login is required.
+
+### Run everything with Docker Compose (with auth)
+
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend (React) | http://localhost:3000 |
+| Backend (Spring Boot) | http://localhost:8080 |
+| Keycloak admin | http://localhost:8180 |
+
+Login with `testuser / password` or `adminuser / password` — Keycloak redirects back automatically.
+
 ## Build
 
 ```bash
@@ -356,6 +391,27 @@ curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
 
 > **Postman**: import `postman/hexagonal-scim.postman_collection.json` and `postman/local-docker.postman_environment.json`.  
 > Run **"Get Token — testuser"** first — it stores the JWT automatically and all subsequent API requests use it.
+
+---
+
+## Versions
+
+### v0.0.1 (2026-05-10)
+
+**Initial release — hexagonal architecture + Keycloak SSO + React frontend**
+
+| Area | What was added |
+|------|----------------|
+| **Architecture** | Multi-module hexagonal layout: `hex-core`, `hex-inbound-adapter-web`, `hex-outbound-adapter-db`, `hex-application` |
+| **API** | Full CRUD REST API (`POST`, `GET`, `PUT`, `PATCH`, `DELETE`) on `/api/v1/users` |
+| **Legacy API** | Backward-compatible `/api/users` with `Deprecation`, `Sunset`, `Link` headers |
+| **Pagination** | `GET /api/v1/users?page=0&size=10` with `PagedUserResponse` |
+| **Persistence** | JPA + Flyway migrations (V1–V3). PostgreSQL in production, H2 in tests |
+| **Security** | Spring Security OAuth2 Resource Server with Keycloak JWT validation. Conditional on `jwk-set-uri` / `issuer-uri` — disabled automatically for local H2 dev |
+| **Keycloak** | Realm `hexagonal-scim`, two clients (`hexagonal-scim-public` PKCE, `hexagonal-scim-app` M2M), two users (`testuser`, `adminuser`), two roles (`user`, `admin`) |
+| **Frontend** | React 18 + Vite + TypeScript + Tailwind CSS SPA at `http://localhost:3000`. PKCE login flow, paginated user table, create / edit / delete modals, role badges, automatic token refresh |
+| **Docker** | Multi-stage `Dockerfile` (Maven build → `eclipse-temurin:17-jre-jammy`), `docker-compose.yml` with PostgreSQL + Keycloak + Spring Boot + React/Nginx |
+| **Docs** | OpenAPI / Swagger UI, Postman collection with Keycloak auth, `KEYCLOAK_LOCAL_DEVELOPMENT.md` |
 
 ---
 

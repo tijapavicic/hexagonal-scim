@@ -105,10 +105,11 @@ services:
       SPRING_DATASOURCE_USERNAME: scim
       SPRING_DATASOURCE_PASSWORD: scim
       # ── Keycloak / OAuth2 ──────────────────────────────────────────────────
-      # Ready for Spring Security Resource Server.
-      # Activate by adding spring-boot-starter-oauth2-resource-server and
-      # the security configuration — this env var will be auto-picked up.
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8180/realms/hexagonal-scim
+      # Using jwk-set-uri (not issuer-uri) to avoid the split-network issuer-mismatch:
+      # the browser fetches tokens from http://localhost:8180 (iss = localhost),
+      # but the app container must reach Keycloak via the Docker-internal hostname.
+      # jwk-set-uri performs signature validation only — no issuer equality check.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/hexagonal-scim/protocol/openid-connect/certs
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health | grep -q UP"]
       interval: 10s
@@ -119,6 +120,29 @@ services:
       - hexagonal-net
     ports:
       - "8080:8080"
+    restart: unless-stopped
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  # React + Vite SPA served by Nginx.
+  # Nginx proxies /api/* to the Spring Boot backend (same origin → no CORS).
+  # Keycloak is called directly by the browser at http://localhost:8180.
+  # VITE_KEYCLOAK_URL is baked into the bundle at image build time.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_KEYCLOAK_URL: http://localhost:8180
+        VITE_KEYCLOAK_REALM: hexagonal-scim
+        VITE_KEYCLOAK_CLIENT_ID: hexagonal-scim-public
+    container_name: hexagonal-scim-frontend
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - hexagonal-net
+    ports:
+      - "3000:80"
     restart: unless-stopped
 
 # ── Volumes ────────────────────────────────────────────────────────────────────

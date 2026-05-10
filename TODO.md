@@ -48,12 +48,19 @@
 
 ## 🚀 CI/CD
 
-- [ ] **GitHub Actions pipeline**  
-  Build, test, OWASP check (`mvn -B org.owasp:dependency-check-maven:check`),  
-  Docker build + push on every PR and merge to main.
+- [x] **GitHub Actions pipeline**  
+  `.github/workflows/ci.yml` — runs on every PR and push to main:  
+  (1) `mvn -B clean verify`, (2) OWASP dependency check (CVSS ≥ 7 = fail), (3) Docker build verification (multi-arch, no push).  
+  Test reports and OWASP HTML report uploaded as artifacts.  
+  Suppression file: `.github/owasp-suppressions.xml`.  
+  Optional: set `NVD_API_KEY` secret to raise NVD API rate limit.
 
-- [ ] **Automatic version tagging**  
-  Tag a Git release when PR is merged to main. Align with `## Versions` in README.
+- [x] **Automatic version tagging**  
+  `.github/workflows/release.yml` — runs on merge to main (after quality gate passes):  
+  (1) Auto-increments patch version from latest `vX.Y.Z` git tag.  
+  (2) Pushes multi-arch Docker images to `ghcr.io` (backend + frontend) tagged `vX.Y.Z` and `latest`.  
+  (3) Creates annotated Git tag and GitHub Release with auto-generated PR-based release notes.  
+  Manual override: trigger `workflow_dispatch` with an explicit version string.
 
 ---
 

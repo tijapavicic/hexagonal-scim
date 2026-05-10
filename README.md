@@ -497,6 +497,20 @@ openssl req -new -newkey rsa:2048 -nodes \
 
 ### v0.0.3 (2026-05-10)
 
+**CI/CD pipeline — GitHub Actions, OWASP gate, Docker push, auto-tagging**
+
+| Area | What was added |
+|------|----------------|
+| **CI workflow** | `.github/workflows/ci.yml` — triggers on every PR and push to `main`. Jobs: (1) `mvn -B clean verify`, (2) OWASP Dependency Check (CVSS ≥ 7 = fail), (3) multi-arch Docker build verification (no push). Test reports and OWASP HTML report uploaded as artifacts. |
+| **Release workflow** | `.github/workflows/release.yml` — triggers on merge to `main`. Auto-increments patch version from latest `vX.Y.Z` git tag, pushes multi-arch images (`linux/amd64`, `linux/arm64`) to `ghcr.io` tagged `vX.Y.Z` + `latest`, creates annotated Git tag and GitHub Release with auto-generated PR-based notes. |
+| **OWASP suppression** | `.github/owasp-suppressions.xml` — empty baseline; add entries when a CVE is false-positive or formally accepted/mitigated. |
+| **Concurrency** | CI cancels in-flight runs for the same branch on rapid push. Release never cancels mid-run. |
+| **Optional secret** | `NVD_API_KEY` — set in repo Settings → Secrets to raise NVD API rate limit and avoid scan throttling. |
+
+---
+
+### v0.0.2 (2026-05-10)
+
 **Profile-based port exposure — port 8080 closed in production, open in local dev**
 
 | Area | What changed |

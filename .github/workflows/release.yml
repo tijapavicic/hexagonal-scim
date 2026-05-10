@@ -1,0 +1,209 @@
+name: Release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers:
+#   • Every merge/push to main (after CI passes)
+#   • Can also be triggered manually with a custom version override
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override version tag (e.g. v0.0.5). Leave blank to auto-increment patch.'
+        required: false
+        default: ''
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false   # never cancel an in-flight release
+
+jobs:
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 1 · Determine next version
+  #     Reads the latest semver tag (vX.Y.Z) and increments the patch segment.
+  #     Workflow-dispatch can override with an explicit version.
+  # ───────────────────────────────────────────────────────────────────────────
+  version:
+    name: Determine next version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.calc.outputs.tag }}
+
+    steps:
+      - name: Checkout (full history for tag inspection)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate next version tag
+        id: calc
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            TAG="${{ github.event.inputs.version }}"
+          else
+            # Find the latest vX.Y.Z tag; default to v0.0.0 if none exists
+            LATEST=$(git tag --list 'v*.*.*' --sort=-version:refname | head -n1)
+            if [ -z "$LATEST" ]; then
+              LATEST="v0.0.0"
+            fi
+            # Strip leading 'v', split, increment patch
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+            PATCH=$((PATCH + 1))
+            TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Next release tag: ${TAG}"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 2 · Build, test, OWASP gate — must all pass before we tag or push
+  # ───────────────────────────────────────────────────────────────────────────
+  gate:
+    name: Build & Quality Gate
+    runs-on: ubuntu-latest
+    needs: version
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build and test
+        run: mvn -B --no-transfer-progress clean verify
+
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-
+
+      - name: OWASP Dependency Check (CVSS ≥ 7 = fail)
+        run: |
+          mvn -B --no-transfer-progress \
+            org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DsuppressionFile=.github/owasp-suppressions.xml \
+            -Dformats=HTML,JSON
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: Upload OWASP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-report-release
+          path: '**/target/dependency-check-report.html'
+          retention-days: 30
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 3 · Docker build & push
+  #     Pushes multi-arch images to GitHub Container Registry (ghcr.io).
+  #     Tags: vX.Y.Z  and  latest
+  #     Requires: Settings → Actions → Allow write packages permission.
+  # ───────────────────────────────────────────────────────────────────────────
+  docker-push:
+    name: Docker Push (${{ needs.version.outputs.tag }})
+    runs-on: ubuntu-latest
+    needs: [ version, gate ]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/app:${{ needs.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}/app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.version.outputs.tag }}
+
+      - name: Push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ needs.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}/frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.version.outputs.tag }}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 4 · Git tag & GitHub Release
+  #     Creates the annotated tag and a GitHub Release with auto-generated
+  #     release notes from merged PR titles (GitHub's built-in).
+  # ───────────────────────────────────────────────────────────────────────────
+  tag-and-release:
+    name: Tag & GitHub Release (${{ needs.version.outputs.tag }})
+    runs-on: ubuntu-latest
+    needs: [ version, docker-push ]
+    permissions:
+      contents: write   # needed to create tags and releases
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create annotated Git tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ needs.version.outputs.tag }}" \
+            -m "Release ${{ needs.version.outputs.tag }} — auto-tagged by release workflow"
+          git push origin "${{ needs.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
+          generate_release_notes: true   # auto-generates notes from merged PRs
+          body: |
+            ## Docker images
+
+            ```
+            ghcr.io/${{ github.repository }}/app:${{ needs.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}/frontend:${{ needs.version.outputs.tag }}
+            ```
+

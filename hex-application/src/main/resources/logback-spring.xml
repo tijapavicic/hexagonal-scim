@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback configuration for hexagonal-scim.
+
+  Profiles:
+    (default / no active profile)  →  Human-readable console — local mvn spring-boot:run
+    docker                         →  JSON to stdout + JSON rolling file at /app/logs/app.log
+                                       File is picked up by Fluent Bit → Splunk HEC pipeline.
+
+  JSON fields emitted (logstash-logback-encoder):
+    @timestamp, level, logger_name, thread_name, message,
+    stack_trace (on exceptions), plus all MDC + custom fields below.
+-->
+<configuration>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       LOCAL DEV — plain readable output, no JSON overhead
+       Active when the "docker" profile is NOT set.
+       ════════════════════════════════════════════════════════════════════════ -->
+  <springProfile name="!docker">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%cyan(%thread)] %logger{36} - %msg%n</pattern>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       DOCKER — structured JSON to stdout AND rolling JSON file
+       Fluent Bit mounts the log volume and tails /app/logs/*.log → Splunk HEC.
+       ════════════════════════════════════════════════════════════════════════ -->
+  <springProfile name="docker">
+
+    <!-- ── JSON stdout (always visible in `docker compose logs`) ─────────── -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"service":"hexagonal-scim","environment":"docker"}</customFields>
+        <!-- Include caller data (class/method/line) — remove in high-throughput prod -->
+        <includeCallerData>false</includeCallerData>
+        <fieldNames>
+          <timestamp>@timestamp</timestamp>
+          <message>message</message>
+          <logger>logger</logger>
+          <thread>thread</thread>
+          <levelValue>[ignore]</levelValue>
+        </fieldNames>
+      </encoder>
+    </appender>
+
+    <!-- ── JSON rolling file — read by Fluent Bit ────────────────────────── -->
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <!-- /app/logs is a Docker named volume shared with fluent-bit container -->
+      <file>/app/logs/app.log</file>
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <fileNamePattern>/app/logs/app.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+        <!-- Keep 7 days; Fluent Bit ships to Splunk before these expire -->
+        <maxHistory>7</maxHistory>
+        <totalSizeCap>512MB</totalSizeCap>
+      </rollingPolicy>
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"service":"hexagonal-scim","environment":"docker"}</customFields>
+        <includeCallerData>false</includeCallerData>
+      </encoder>
+    </appender>
+
+    <!-- Async wrapper keeps request threads from blocking on file I/O -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+      <queueSize>512</queueSize>
+      <discardingThreshold>0</discardingThreshold>
+      <appender-ref ref="FILE_JSON"/>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_JSON"/>
+      <appender-ref ref="ASYNC_FILE"/>
+    </root>
+
+    <!-- Reduce noise from framework internals -->
+    <logger name="org.springframework.security"    level="WARN"/>
+    <logger name="org.hibernate.SQL"               level="WARN"/>
+    <logger name="org.flywaydb"                    level="INFO"/>
+    <logger name="com.example.user"                level="DEBUG"/>
+  </springProfile>
+
+</configuration>
+

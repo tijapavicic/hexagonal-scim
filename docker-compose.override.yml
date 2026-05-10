@@ -11,12 +11,20 @@
 #   - app: binds port 8080 to the host so Postman / curl can reach the backend directly
 #   - db:  binds port 5432 to the host so pgAdmin / psql can connect locally
 #
+# Observability services added (local only):
+#   - prometheus  → http://localhost:9090
+#   - grafana     → http://localhost:3001  (admin / admin)
+#   - splunk      → http://localhost:8000  (admin / Admin1234!)
+#                   HEC: https://localhost:8088  token: 11111111-1111-1111-1111-111111111111
+#   - fluent-bit  → reads /app/logs/*.log and ships to Splunk HEC
+#
 # ⚠️  DO NOT commit sensitive values here. This file is safe to commit because
-#     it only adds port bindings — no credentials.
+#     it only adds port bindings and uses non-production credentials.
 # ──────────────────────────────────────────────────────────────────────────────
 
 services:
 
+  # ── Core service port bindings for local tooling ───────────────────────────
   app:
     ports:
       - "8080:8080"   # DEV: expose backend HTTP for Postman / curl (bypasses Nginx)
@@ -25,3 +33,133 @@ services:
     ports:
       - "5432:5432"   # DEV: expose PostgreSQL for pgAdmin / psql / IntelliJ DB tools
 
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  # Scrapes /actuator/prometheus from the Spring Boot app every 10s.
+  # Web UI: http://localhost:9090
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: hexagonal-scim-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  # Dashboards auto-provisioned from docker/grafana/.
+  # Login: admin / admin
+  # Web UI: http://localhost:3001  (3000 is used by the React frontend)
+  grafana:
+    image: grafana/grafana:11.3.2
+    container_name: hexagonal-scim-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER:                 admin
+      GF_SECURITY_ADMIN_PASSWORD:             admin
+      GF_USERS_ALLOW_SIGN_UP:                 "false"
+      GF_ANALYTICS_REPORTING_ENABLED:         "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES:         "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES:  "false"
+      GF_UNIFIED_ALERTING_ENABLED:            "true"
+      GF_ALERTING_ENABLED:                    "false"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Splunk ──────────────────────────────────────────────────────────────────
+  # Receives structured JSON logs from Fluent Bit via HEC.
+  # Web UI:  http://localhost:8000   admin / Admin1234!
+  # HEC:     https://localhost:8088  token: 11111111-1111-1111-1111-111111111111
+  # Search:  index=main sourcetype="hexagonal-scim:json"
+  #
+  # ⚠️  Image is ~4GB. First pull takes time. First start takes 2-3 min.
+  splunk:
+    image: splunk/splunk:9.3
+    container_name: hexagonal-scim-splunk
+    environment:
+      SPLUNK_START_ARGS:  --accept-license
+      SPLUNK_PASSWORD:    Admin1234!
+      SPLUNK_HEC_TOKEN:   11111111-1111-1111-1111-111111111111
+    volumes:
+      - splunk_data:/opt/splunk/var
+    ports:
+      - "8000:8000"   # Splunk Web UI
+      - "8088:8088"   # HEC — receives logs from Fluent Bit
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fks", "https://localhost:8089/services/server/health/readiness"]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 180s
+
+  # ── Fluent Bit ──────────────────────────────────────────────────────────────
+  # Tails /app/logs/app.log (shared Docker volume with app) and ships JSON
+  # events to Splunk HEC. Lightweight — 1 CPU / ~20MB RAM.
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    container_name: hexagonal-scim-fluent-bit
+    volumes:
+      - ./docker/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./docker/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - app_logs:/app/logs:ro
+      - fluent_bit_db:/var/lib/fluent-bit
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    depends_on:
+      splunk:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2020"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# ── Additional volumes for local observability ─────────────────────────────────
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  splunk_data:
+    driver: local
+  fluent_bit_db:
+    driver: local

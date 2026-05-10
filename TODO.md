@@ -66,11 +66,17 @@
 
 ## 📊 Observability
 
-- [ ] **Structured JSON logging**  
-  Add `logstash-logback-encoder` to `hex-application`. Emit JSON logs parseable by Datadog / ELK.
+- [x] **Structured JSON logging**  
+  `logstash-logback-encoder 8.0` added. `logback-spring.xml` emits JSON in `docker` profile.  
+  Logs go to stdout + `/app/logs/app.log` (shared Docker volume). Readable in `docker compose logs`.
 
-- [ ] **Metrics — Prometheus + Grafana**  
-  Add Micrometer Prometheus endpoint. Add `prometheus` and `grafana` services to `docker-compose.yml`.
+- [x] **Metrics — Prometheus + Grafana**  
+  `micrometer-registry-prometheus` added. `/actuator/prometheus` exposed.  
+  Prometheus scrapes every 10s. Grafana dashboard auto-provisioned with 11 panels (latency, heap, CPU, GC, error rate).
+
+- [x] **Log shipping — Fluent Bit + Splunk**  
+  Fluent Bit tails the `app_logs` volume and ships JSON events to Splunk HEC.  
+  Splunk Web UI at `http://localhost:8000`. Search: `index=main sourcetype="hexagonal-scim:json"`.
 
 - [ ] **Distributed tracing**  
   Add OpenTelemetry Java agent. Export traces to Jaeger or Zipkin (add to `docker-compose.yml`).

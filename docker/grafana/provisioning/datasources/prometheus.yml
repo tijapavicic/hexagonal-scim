@@ -1,0 +1,30 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Grafana datasource provisioning — Prometheus
+#
+# Grafana loads this file on startup and creates the Prometheus datasource
+# automatically — no manual UI config required.
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: 1
+
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus-hexagonal-scim
+    access: proxy
+    url: http://prometheus:9090
+    orgId: 1
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      # Enables Prometheus exemplar support (links traces → metrics)
+      exemplarTraceIdDestinations:
+        - name: traceId
+          datasourceUid: jaeger
+      # Match the scrape interval in prometheus.yml
+      timeInterval: "10s"
+

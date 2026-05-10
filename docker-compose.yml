@@ -113,6 +113,10 @@ services:
       # jwk-set-uri (not issuer-uri) skips issuer-equality check — required because the
       # browser sees https://localhost:8443 while the app reaches keycloak:8180 internally.
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/hexagonal-scim/protocol/openid-connect/certs
+    volumes:
+      # Named volume shared with fluent-bit — Spring Boot writes JSON logs here
+      # (enabled when SPRING_PROFILES_ACTIVE=docker, see logback-spring.xml)
+      - app_logs:/app/logs
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health | grep -q UP"]
       interval: 10s
@@ -155,6 +159,11 @@ services:
 # ── Volumes ────────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
+    driver: local
+  # Shared between hexagonal-scim-app (writer) and hexagonal-scim-fluent-bit (reader).
+  # Spring Boot (logback-spring.xml, docker profile) writes JSON logs to /app/logs/app.log.
+  # Fluent Bit tails those files and ships events to Splunk HEC.
+  app_logs:
     driver: local
 
 # ── Networks ───────────────────────────────────────────────────────────────────

@@ -1,0 +1,21 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Grafana dashboard provisioning
+#
+# Tells Grafana where to find dashboard JSON files at startup.
+# Any *.json file dropped into /etc/grafana/dashboards/ is auto-imported.
+# ──────────────────────────────────────────────────────────────────────────────
+apiVersion: 1
+
+providers:
+  - name: hexagonal-scim
+    orgId: 1
+    folder: 'Hexagonal SCIM'
+    folderUid: hexagonal-scim
+    type: file
+    disableDeletion: true       # Prevent accidental UI deletions
+    updateIntervalSeconds: 30   # Hot-reload dashboard changes from disk
+    allowUiUpdates: true        # Allow UI edits (saves back to JSON volume)
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
+

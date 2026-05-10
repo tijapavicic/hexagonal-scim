@@ -299,6 +299,9 @@ Docker Compose automatically merges `docker-compose.override.yml` — this expos
 | Frontend (React) | https://localhost:3000 |
 | Backend (Spring Boot) | http://localhost:8080 (dev only — via override) |
 | Keycloak admin | https://localhost:8443 |
+| Prometheus | http://localhost:9090 (dev only — via override) |
+| Grafana | http://localhost:3001  admin / admin (dev only — via override) |
+| Splunk Web UI | http://localhost:8000  admin / Admin1234! (dev only — via override) |
 
 **Production / CI — skip the dev override:**
 
@@ -494,6 +497,23 @@ openssl req -new -newkey rsa:2048 -nodes \
 ---
 
 ## Versions
+
+### v0.0.4 (2026-05-11)
+
+**Observability — Prometheus + Grafana (metrics) + Splunk + Fluent Bit (logs)**
+
+| Area | What was added |
+|------|----------------|
+| **Micrometer / Prometheus** | `micrometer-registry-prometheus` added. `/actuator/prometheus` exposed. Histogram buckets enabled for P50/P95/P99 latency. Metrics tagged with `application=hexagonal-scim`. |
+| **Structured logging** | `logstash-logback-encoder 8.0` added. `logback-spring.xml` profile-aware: plain text locally, JSON to stdout + rolling file (`/app/logs/app.log`) in docker profile. |
+| **Prometheus** | `docker/prometheus/prometheus.yml` — scrapes `app:8080/actuator/prometheus` every 10s. `prom/prometheus:v2.54.1`. |
+| **Grafana** | `docker/grafana/` — auto-provisioned Prometheus datasource + custom Spring Boot 3 / JVM dashboard (11 panels: request rate, error rate, p50/p95/p99 latency, heap, CPU, threads, GC, per-endpoint breakdown). `grafana/grafana:11.3.2`. |
+| **Fluent Bit** | `docker/fluent-bit/` — tails `/app/logs/app.log` from shared Docker volume, parses JSON, ships to Splunk HEC with retry. `fluent/fluent-bit:3.2`. |
+| **Splunk** | `splunk/splunk:9.3` with HEC auto-configured via `SPLUNK_HEC_TOKEN`. Token: `11111111-1111-1111-1111-111111111111`. |
+| **Docker Compose** | `app_logs` named volume added to base file (shared between app and Fluent Bit). Override adds all 4 observability services for local dev. New `docker-compose.observability.yml` for staging (no host port bindings, credentials from env vars). |
+| **Documentation** | `documenttaion/OBSERVABILITY.md` — full guide: pipeline diagrams, search queries, PromQL reference, production checklist, troubleshooting. |
+
+
 
 ### v0.0.3 (2026-05-10)
 

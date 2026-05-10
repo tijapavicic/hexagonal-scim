@@ -1,0 +1,120 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# OBSERVABILITY COMPOSE — for staging / CI environments
+#
+# This file adds the full observability stack WITHOUT the local dev port bindings
+# (no host-bound 9090, 3001, 8000, 8088 — services reachable internally only).
+#
+# Usage:
+#   # Staging — observability on internal network only
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up --build
+#
+#   # CI — just verify the app builds and starts (no observability)
+#   docker compose -f docker-compose.yml up --build
+#
+# Notes:
+# - In a real staging environment, Prometheus would be scraped by a central
+#   monitoring server (e.g. Thanos, Mimir).
+# - Grafana would be served behind a reverse proxy (e.g. Nginx, Traefik).
+# - Splunk HEC endpoint would be an external Splunk Cloud/Enterprise URL.
+#   Set SPLUNK_HEC_URL and SPLUNK_HEC_TOKEN as environment variables or secrets.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: hexagonal-scim-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'   # Longer retention for staging
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"        # Internal only — no host binding in staging
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  # In staging, Grafana should be fronted by a reverse proxy with proper TLS.
+  # Set GF_SECURITY_ADMIN_PASSWORD via env/secret — do NOT use "admin" in staging.
+  grafana:
+    image: grafana/grafana:11.3.2
+    container_name: hexagonal-scim-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER:                 ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD:             ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      GF_USERS_ALLOW_SIGN_UP:                 "false"
+      GF_ANALYTICS_REPORTING_ENABLED:         "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES:         "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES:  "false"
+      GF_SERVER_ROOT_URL:                     ${GRAFANA_ROOT_URL:-http://localhost:3001}
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    expose:
+      - "3000"        # Internal — front with Nginx/Traefik in staging
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Fluent Bit ──────────────────────────────────────────────────────────────
+  # In staging: ships logs to an external Splunk endpoint.
+  # Override SPLUNK_HOST / SPLUNK_HEC_TOKEN via environment variables.
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    container_name: hexagonal-scim-fluent-bit
+    environment:
+      # Override these in your CI/staging environment
+      SPLUNK_HOST:      ${SPLUNK_HOST:-splunk}
+      SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN:-11111111-1111-1111-1111-111111111111}
+    volumes:
+      - ./docker/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./docker/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - app_logs:/app/logs:ro
+      - fluent_bit_db:/var/lib/fluent-bit
+    networks:
+      - hexagonal-net
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2020"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# ── Volumes ────────────────────────────────────────────────────────────────────
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  fluent_bit_db:
+    driver: local
+

@@ -67,6 +67,10 @@
                     <version>3.13.0</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
+                        <!-- Required by Spring Framework 6 for constructor/method parameter name retention.
+                             Without this flag, Spring cannot disambiguate beans by parameter name and
+                             throws "expected single matching bean but found N" at startup. -->
+                        <parameters>true</parameters>
                     </configuration>
                 </plugin>
                 <plugin>

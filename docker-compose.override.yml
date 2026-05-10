@@ -107,6 +107,9 @@ services:
   # ⚠️  Image is ~4GB. First pull takes time. First start takes 2-3 min.
   splunk:
     image: splunk/splunk:9.3
+    # Splunk publishes amd64-only images. On Apple Silicon (arm64) Docker Desktop
+    # runs this under Rosetta 2 emulation — functional but ~10-20% slower than native.
+    platform: linux/amd64
     container_name: hexagonal-scim-splunk
     environment:
       SPLUNK_START_ARGS:  --accept-license

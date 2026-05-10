@@ -28,7 +28,12 @@ RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
 
 WORKDIR /app
 COPY --from=build /workspace/hex-application/target/*.jar app.jar
-RUN chown appuser:appgroup app.jar
+
+# Pre-create the log directory with correct ownership BEFORE switching to appuser.
+# Without this, Docker creates /app/logs as root when the named volume is mounted,
+# and the non-root appuser cannot write app.log → startup fails with Permission denied.
+RUN mkdir -p /app/logs \
+    && chown -R appuser:appgroup /app
 
 USER appuser
 EXPOSE 8080

@@ -58,6 +58,19 @@ public class ApiExceptionHandlerAdapter {
         return error("VALIDATION_ERROR", detail, req);
     }
 
+    // ─── Domain invariant violations ─────────────────────────────────────────
+
+    /**
+     * Handles {@link IllegalArgumentException} thrown when domain model invariants are violated
+     * (e.g. blank email or displayName reaching the {@link com.example.user.model.User} compact
+     * constructor). These are client errors — the payload supplied values the domain cannot accept.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
+        return error("INVALID_REQUEST", ex.getMessage(), req);
+    }
+
     // ─── Security exceptions ──────────────────────────────────────────────────
 
     /**

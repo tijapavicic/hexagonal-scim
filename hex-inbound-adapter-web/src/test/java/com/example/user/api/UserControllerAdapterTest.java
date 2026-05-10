@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -100,6 +101,58 @@ class UserControllerAdapterTest {
     }
 
     @Test
+    void createRejectsMissingEmail() throws Exception {
+        // JSON body with no email field at all — @NotBlank triggers
+        ResultActions result = mockMvc.perform(post(VERSIONED_USERS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Alice\"}"));
+
+        result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(createUserPort);
+    }
+
+    @Test
+    void createRejectsBlankDisplayName() throws Exception {
+        ResultActions result = mockMvc.perform(post(VERSIONED_USERS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@b.com\",\"displayName\":\"  \"}"));
+
+        result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(createUserPort);
+    }
+
+    @Test
+    void createReturns409OnDuplicateEmail() throws Exception {
+        when(createUserPort.create(anyString(), anyString()))
+                .thenThrow(new DuplicateUserException("Email already registered"));
+
+        ResultActions result = mockMvc.perform(post(VERSIONED_USERS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"existing@example.com\",\"displayName\":\"Dup\"}"));
+
+        result.andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_ALREADY_EXISTS"));
+    }
+
+    @Test
+    void getAllWithCustomPageAndSize() throws Exception {
+        PagedUsers page = new PagedUsers(List.of(), 2, 5, 100, 20);
+        when(getAllUsersPort.getAll(2, 5, true)).thenReturn(page);
+
+        mockMvc.perform(get(VERSIONED_USERS_PATH).param("page", "2").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pageNumber").value(2))
+                .andExpect(jsonPath("$.pageSize").value(5))
+                .andExpect(jsonPath("$.totalElements").value(100));
+
+        verify(getAllUsersPort).getAll(2, 5, true);
+    }
+
+    @Test
     void getAllReturnsPagedUsers() throws Exception {
         User user1 = new User(1L, "alice@example.com", "Alice");
         User user2 = new User(2L, "bob@example.com", "Bob");
@@ -152,6 +205,19 @@ class UserControllerAdapterTest {
     }
 
     @Test
+    void getByIdReturnsUser() throws Exception {
+        when(getUserPort.getById(1L)).thenReturn(new User(1L, "alice@example.com", "Alice"));
+
+        ResultActions result = mockMvc.perform(get(VERSIONED_USERS_PATH + "/1"));
+
+        assertNoLegacyHeaders(result);
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.displayName").value("Alice"));
+    }
+
+    @Test
     void getByIdReturnsNotFoundWhenMissing() throws Exception {
         when(getUserPort.getById(eq(999L))).thenThrow(new UserNotFoundException("missing"));
 
@@ -164,18 +230,6 @@ class UserControllerAdapterTest {
         verify(getUserPort).getById(999L);
     }
 
-    @Test
-    void legacyPathIsStillSupported() throws Exception {
-        when(getUserPort.getById(eq(999L))).thenThrow(new UserNotFoundException("missing"));
-
-        ResultActions result = mockMvc.perform(get(LEGACY_USERS_PATH + "/999"));
-
-        assertLegacyHeaders(result);
-        result.andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
-
-        verify(getUserPort).getById(999L);
-    }
 
     // ─── PUT /{id} ────────────────────────────────────────────────────────────
 
@@ -238,6 +292,45 @@ class UserControllerAdapterTest {
     // ─── PATCH /{id} ──────────────────────────────────────────────────────────
 
     @Test
+    void patchReturns404WhenUserNotFound() throws Exception {
+        when(patchUserPort.patch(eq(999L), any(), any()))
+                .thenThrow(new UserNotFoundException("not found"));
+
+        mockMvc.perform(patch(VERSIONED_USERS_PATH + "/999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Renamed\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void patchReturns409OnDuplicateEmail() throws Exception {
+        when(patchUserPort.patch(eq(1L), eq("taken@example.com"), any()))
+                .thenThrow(new DuplicateUserException("email taken"));
+
+        mockMvc.perform(patch(VERSIONED_USERS_PATH + "/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"taken@example.com\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_ALREADY_EXISTS"));
+    }
+
+    @Test
+    void patchUpdatesBothFields() throws Exception {
+        when(patchUserPort.patch(1L, "new@example.com", "New Name"))
+                .thenReturn(new User(1L, "new@example.com", "New Name"));
+
+        mockMvc.perform(patch(VERSIONED_USERS_PATH + "/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"new@example.com\",\"displayName\":\"New Name\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("new@example.com"))
+                .andExpect(jsonPath("$.displayName").value("New Name"));
+
+        verify(patchUserPort).patch(1L, "new@example.com", "New Name");
+    }
+
+    @Test
     void patchUpdatesDisplayNameOnly() throws Exception {
         when(patchUserPort.patch(1L, null, "Renamed"))
                 .thenReturn(new User(1L, "alice@example.com", "Renamed"));
@@ -291,6 +384,47 @@ class UserControllerAdapterTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
 
         verifyNoInteractions(patchUserPort);
+    }
+
+    // ─── legacy path ─────────────────────────────────────────────────────────
+
+    @Test
+    void legacyPathIsStillSupported() throws Exception {
+        when(getUserPort.getById(eq(999L))).thenThrow(new UserNotFoundException("missing"));
+
+        ResultActions result = mockMvc.perform(get(LEGACY_USERS_PATH + "/999"));
+
+        assertLegacyHeaders(result);
+        result.andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+
+        verify(getUserPort).getById(999L);
+    }
+
+    @Test
+    void legacyCreatePathHasDeprecationHeaders() throws Exception {
+        when(createUserPort.create(anyString(), anyString()))
+                .thenReturn(new User(1L, "alice@example.com", "Alice"));
+
+        ResultActions result = mockMvc.perform(post(LEGACY_USERS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"alice@example.com\",\"displayName\":\"Alice\"}"));
+
+        assertLegacyHeaders(result);
+        result.andExpect(status().isCreated());
+    }
+
+    // ─── ErrorResponse structure ──────────────────────────────────────────────
+
+    @Test
+    void errorResponseIncludesPathAndTimestamp() throws Exception {
+        when(getUserPort.getById(99L)).thenThrow(new UserNotFoundException("not found"));
+
+        mockMvc.perform(get(VERSIONED_USERS_PATH + "/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"))
+                .andExpect(jsonPath("$.path").value("/api/v1/users/99"))
+                .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     // ─── DELETE /{id} ─────────────────────────────────────────────────────────

@@ -12,10 +12,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UserServiceTest {
+
+    // ─── create ───────────────────────────────────────────────────────────────
 
     @Test
     void createStoresUser() {
@@ -36,6 +40,47 @@ class UserServiceTest {
     }
 
     @Test
+    void createRejectsDuplicateEmailCaseInsensitive() {
+        UserService service = new UserService(new InMemoryRepo());
+        service.create("john@example.com", "John");
+
+        // Same email, different case — must still be rejected
+        assertThrows(DuplicateUserException.class,
+                () -> service.create("JOHN@EXAMPLE.COM", "John Upper"));
+    }
+
+    @Test
+    void createWithNullEmailThrowsNullPointerException() {
+        UserService service = new UserService(new InMemoryRepo());
+
+        // Domain invariant: User compact constructor rejects null email
+        assertThrows(NullPointerException.class, () -> service.create(null, "Alice"));
+    }
+
+    @Test
+    void createWithBlankEmailThrowsIllegalArgumentException() {
+        UserService service = new UserService(new InMemoryRepo());
+
+        assertThrows(IllegalArgumentException.class, () -> service.create("  ", "Alice"));
+    }
+
+    @Test
+    void createWithNullDisplayNameThrowsNullPointerException() {
+        UserService service = new UserService(new InMemoryRepo());
+
+        assertThrows(NullPointerException.class, () -> service.create("alice@example.com", null));
+    }
+
+    @Test
+    void createWithBlankDisplayNameThrowsIllegalArgumentException() {
+        UserService service = new UserService(new InMemoryRepo());
+
+        assertThrows(IllegalArgumentException.class, () -> service.create("alice@example.com", ""));
+    }
+
+    // ─── getById ──────────────────────────────────────────────────────────────
+
+    @Test
     void getByIdReturnsStoredUser() {
         UserService service = new UserService(new InMemoryRepo());
         User created = service.create("jane@example.com", "Jane");
@@ -53,6 +98,19 @@ class UserServiceTest {
         assertThrows(UserNotFoundException.class, () -> service.getById(100L));
     }
 
+    // ─── getAll ───────────────────────────────────────────────────────────────
+
+    @Test
+    void getAllOnEmptyStoreReturnsEmptyPage() {
+        UserService service = new UserService(new InMemoryRepo());
+
+        PagedUsers result = service.getAll(0, 10, true);
+
+        assertTrue(result.content().isEmpty());
+        assertEquals(0, result.totalElements());
+        assertEquals(0, result.totalPages());
+    }
+
     @Test
     void getAllPageableReturnsSinglePage() {
         UserService service = new UserService(new InMemoryRepo());
@@ -67,6 +125,20 @@ class UserServiceTest {
         assertEquals(2, result.pageSize());
         assertEquals(3, result.totalElements());
         assertEquals(2, result.totalPages());
+    }
+
+    @Test
+    void getAllSecondPageReturnsRemainingUsers() {
+        UserService service = new UserService(new InMemoryRepo());
+        service.create("a@example.com", "A");
+        service.create("b@example.com", "B");
+        service.create("c@example.com", "C");
+
+        PagedUsers result = service.getAll(1, 2, true);
+
+        assertEquals(1, result.content().size());
+        assertEquals(1, result.pageNumber());
+        assertEquals(3, result.totalElements());
     }
 
     @Test
@@ -138,6 +210,30 @@ class UserServiceTest {
         assertEquals("Alice Renamed", updated.displayName());
     }
 
+    @Test
+    void updateAllowsSameEmailWithDifferentCase() {
+        UserService service = new UserService(new InMemoryRepo());
+        User created = service.create("alice@example.com", "Alice");
+
+        // Updating to ALICE@EXAMPLE.COM should succeed — same person, different case
+        User updated = assertDoesNotThrow(
+                () -> service.update(created.id(), "ALICE@EXAMPLE.COM", "Alice Renamed"));
+
+        assertEquals("ALICE@EXAMPLE.COM", updated.email());
+        assertEquals("Alice Renamed", updated.displayName());
+    }
+
+    @Test
+    void updateThrowsOnDuplicateEmailCaseInsensitive() {
+        UserService service = new UserService(new InMemoryRepo());
+        service.create("alice@example.com", "Alice");
+        User bob = service.create("bob@example.com", "Bob");
+
+        // ALICE@EXAMPLE.COM is already taken by alice — must reject for bob
+        assertThrows(DuplicateUserException.class,
+                () -> service.update(bob.id(), "ALICE@EXAMPLE.COM", "Evil Bob"));
+    }
+
     // ─── patch ────────────────────────────────────────────────────────────────
 
     @Test
@@ -163,6 +259,18 @@ class UserServiceTest {
     }
 
     @Test
+    void patchUpdatesBothFields() {
+        UserService service = new UserService(new InMemoryRepo());
+        User created = service.create("alice@example.com", "Alice");
+
+        User patched = service.patch(created.id(), "alicia@example.com", "Alicia Smith");
+
+        assertEquals("alicia@example.com", patched.email());
+        assertEquals("Alicia Smith", patched.displayName());
+        assertEquals(created.id(), patched.id());
+    }
+
+    @Test
     void patchThrowsWhenUserNotFound() {
         UserService service = new UserService(new InMemoryRepo());
 
@@ -177,6 +285,19 @@ class UserServiceTest {
 
         assertThrows(DuplicateUserException.class,
                 () -> service.patch(bob.id(), "alice@example.com", null));
+    }
+
+    @Test
+    void patchAllowsSameEmailCaseVariation() {
+        UserService service = new UserService(new InMemoryRepo());
+        User created = service.create("alice@example.com", "Alice");
+
+        // Patching with ALICE@EXAMPLE.COM should NOT be rejected — same user, different case
+        User patched = assertDoesNotThrow(
+                () -> service.patch(created.id(), "ALICE@EXAMPLE.COM", null));
+
+        assertEquals("ALICE@EXAMPLE.COM", patched.email());
+        assertEquals("Alice", patched.displayName()); // unchanged
     }
 
     // ─── deleteById ───────────────────────────────────────────────────────────
@@ -197,6 +318,8 @@ class UserServiceTest {
 
         assertThrows(UserNotFoundException.class, () -> service.deleteById(999L));
     }
+
+    // ─── Fake in-memory repo used by ALL service tests ────────────────────────
 
     private static final class InMemoryRepo implements UserRepositoryPort {
         private final AtomicLong sequence = new AtomicLong(0);
@@ -247,3 +370,4 @@ class UserServiceTest {
         }
     }
 }
+

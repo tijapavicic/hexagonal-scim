@@ -13,41 +13,77 @@ import com.example.user.port.out.UserRepositoryPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Application-layer wiring — the sole place where all hexagonal components are assembled.
+ *
+ * <p>A <strong>single</strong> {@link UserService} instance is created and shared across
+ * all inbound port bindings. Earlier versions created one service instance per port using
+ * separate {@code new UserService(...)} calls, which was wasteful and obscured the fact
+ * that every port operation belongs to the same domain service.
+ *
+ * <p>Dependency flow:
+ * <pre>
+ *   UserJpaRepository  →  UserRepositoryAdapter  →  UserRepositoryPort
+ *                                                         ↓
+ *                                                    UserService  (one instance)
+ *                                                         ↓  (method references)
+ *   CreateUserPort, GetUserPort, GetAllUsersPort, UpdateUserPort, PatchUserPort, DeleteUserPort
+ * </pre>
+ */
 @Configuration
 public class UserConfig {
 
     @Bean
-    public UserRepositoryPort userRepositoryPort(UserJpaRepository userJpaRepository) {
+    UserRepositoryPort userRepositoryPort(UserJpaRepository userJpaRepository) {
         return new UserRepositoryAdapter(userJpaRepository);
     }
 
+    /**
+     * Single shared domain service — registered under an internal bean name that does NOT
+     * match any port interface type.  All port beans below reference it via this @Bean method.
+     *
+     * <p>Spring's {@code @Configuration} CGLIB proxy guarantees that calling
+     * {@code userServiceBean(userRepositoryPort)} multiple times within the same
+     * {@code @Configuration} class returns the <em>same cached instance</em>, so only
+     * one {@link UserService} is created regardless of how many port beans reference it.
+     *
+     * <p>The bean is typed as {@code UserService} (concrete class), so Spring never
+     * considers it as a candidate when autowiring any of the port interfaces — eliminating
+     * the "expected single matching bean but found 2" ambiguity that occurs when the service
+     * is registered directly as a {@code @Bean} that implements those interfaces.
+     */
     @Bean
-    public CreateUserPort createUserPort(UserRepositoryPort userRepositoryPort) {
-        return new UserService(userRepositoryPort)::create;
+    UserService userServiceBean(UserRepositoryPort userRepositoryPort) {
+        return new UserService(userRepositoryPort);
     }
 
     @Bean
-    public GetUserPort getUserPort(UserRepositoryPort userRepositoryPort) {
-        return new UserService(userRepositoryPort)::getById;
+    CreateUserPort createUserPort(UserService userServiceBean) {
+        return userServiceBean::create;
     }
 
     @Bean
-    public GetAllUsersPort getAllUsersPort(UserRepositoryPort userRepositoryPort) {
-        return new UserService(userRepositoryPort)::getAll;
+    GetUserPort getUserPort(UserService userServiceBean) {
+        return userServiceBean::getById;
     }
 
     @Bean
-    public UpdateUserPort updateUserPort(UserRepositoryPort userRepositoryPort) {
-        return new UserService(userRepositoryPort)::update;
+    GetAllUsersPort getAllUsersPort(UserService userServiceBean) {
+        return userServiceBean::getAll;
     }
 
     @Bean
-    public PatchUserPort patchUserPort(UserRepositoryPort userRepositoryPort) {
-        return new UserService(userRepositoryPort)::patch;
+    UpdateUserPort updateUserPort(UserService userServiceBean) {
+        return userServiceBean::update;
     }
 
     @Bean
-    public DeleteUserPort deleteUserPort(UserRepositoryPort userRepositoryPort) {
-        return new UserService(userRepositoryPort)::deleteById;
+    PatchUserPort patchUserPort(UserService userServiceBean) {
+        return userServiceBean::patch;
+    }
+
+    @Bean
+    DeleteUserPort deleteUserPort(UserService userServiceBean) {
+        return userServiceBean::deleteById;
     }
 }

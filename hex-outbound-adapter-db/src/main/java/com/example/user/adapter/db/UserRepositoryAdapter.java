@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,7 +58,20 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
                 .toList();
     }
 
+    /**
+     * Updates all mutable fields of an existing user entity.
+     *
+     * <p>{@code @Transactional} wraps the {@code findById} + {@code save} pair in a single
+     * database transaction, preventing a race condition where another transaction could delete
+     * the row between the two calls.
+     *
+     * <p>Callers (i.e. {@link com.example.user.core.UserService}) are responsible for verifying
+     * that the user exists and the new e-mail is unique <em>before</em> invoking this method.
+     * The {@link IllegalStateException} thrown here is therefore a programming-error guard,
+     * not a domain exception.
+     */
     @Override
+    @Transactional
     public User update(User user) {
         UserEntity entity = userJpaRepository.findById(user.id())
                 .orElseThrow(() -> new IllegalStateException("Entity not found for id: " + user.id()));

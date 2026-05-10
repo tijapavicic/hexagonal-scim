@@ -401,6 +401,89 @@ curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
 
 ---
 
+## TODO
+
+### 🔴 Critical — Before Production
+
+#### 🔴 CRITICAL 1 — Close port 8080 to the host
+
+`app` in `docker-compose.yml` has `ports: "8080:8080"` which binds the backend HTTP port to `0.0.0.0` on the host. Any process on the machine (or the LAN if the firewall allows) can call `http://localhost:8080` directly, bypassing Nginx and sending unencrypted traffic containing JWT bearer tokens.
+
+**Fix — remove the `ports` mapping from the `app` service:**
+
+```yaml
+# docker-compose.yml — BEFORE (dev)
+app:
+  ports:
+    - "8080:8080"   # ← remove this in production
+
+# docker-compose.yml — AFTER (production)
+app:
+  # No ports: — backend only reachable through Nginx on hexagonal-net
+  expose:
+    - "8080"        # internal Docker network only; tells Nginx which port to proxy
+```
+
+Nginx already proxies `/api/*` to `http://app:8080` on the internal `hexagonal-net` bridge — removing the host port binding closes the direct path without breaking anything.
+
+---
+
+#### 🔴 CRITICAL 2 — Replace self-signed TLS certificate
+
+`docker/certs/server.crt` is a self-signed dev certificate. Browsers show a security warning, HSTS is not effective, and the cert cannot be pinned or validated by external services. **Do not use in staging or production.**
+
+**Fix options (choose one based on environment):**
+
+**Option A — Let's Encrypt (public server, automated renewal):**
+```bash
+# Install Certbot
+brew install certbot   # macOS
+# or: apt install certbot
+
+# Obtain cert (requires port 80 open and a real domain)
+certbot certonly --standalone -d yourdomain.com
+
+# Certs land at:
+#   /etc/letsencrypt/live/yourdomain.com/fullchain.pem  → server.crt
+#   /etc/letsencrypt/live/yourdomain.com/privkey.pem    → server.key
+
+# Mount into docker-compose.yml:
+volumes:
+  - /etc/letsencrypt/live/yourdomain.com/fullchain.pem:/etc/nginx/certs/server.crt:ro
+  - /etc/letsencrypt/live/yourdomain.com/privkey.pem:/etc/nginx/certs/server.key:ro
+```
+
+**Option B — Corporate / internal CA (air-gapped / private network):**
+```bash
+# Generate CSR
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout server.key \
+  -out server.csr \
+  -subj "/CN=yourdomain.internal/O=YourOrg"
+
+# Submit server.csr to your CA → receive server.crt (+ chain)
+# Replace docker/certs/server.crt and server.key
+# Distribute the CA root cert to browsers / OS trust stores
+```
+
+**Option C — AWS / GCP / Azure (cloud-managed TLS):**
+- Terminate TLS at the load balancer (ACM, Cloud Armor, Azure Front Door)
+- Remove TLS from Nginx entirely — the LB handles it
+- Backend stays HTTP-only on the internal VPC network (same pattern as now, but properly isolated)
+
+**Also update `KC_HTTPS_CERTIFICATE_FILE` in `docker-compose.yml`** to point to the new cert path for Keycloak.
+
+---
+
+| Priority | Item | Detail |
+|----------|------|--------|
+| 🟠 HIGH | **Rotate all default secrets** | `KEYCLOAK_ADMIN_PASSWORD: admin`, `hexagonal-scim-secret` client secret, DB passwords (`scim/scim`) are hardcoded defaults. Move to environment-specific secrets management (Vault, AWS Secrets Manager, Kubernetes Secrets). |
+| 🟠 HIGH | **Restrict actuator exposure** | `/actuator/health` and `/actuator/info` are public. Audit before adding more endpoints. In production, bind actuator to a separate management port not exposed externally. |
+| 🟡 MEDIUM | **Enable Keycloak production mode** | Keycloak runs with `start-dev` which disables caches, uses in-memory sessions, and is not hardened. Switch to `start` (production mode) with proper hostname configuration. |
+| 🟡 MEDIUM | **Separate Keycloak database** | Keycloak and the app share the same PostgreSQL instance via `init-keycloak.sql`. Use separate database instances in production for failure isolation. |
+
+---
+
 ## Versions
 
 ### v0.0.2 (2026-05-10)

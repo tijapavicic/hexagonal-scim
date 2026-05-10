@@ -123,10 +123,9 @@ services:
       - hexagonal-net
     expose:
       - "8080"        # Internal only — Nginx proxies /api/* to http://app:8080 on hexagonal-net.
-                      # Port is NOT bound to the host in production.
-                      # For local Postman / curl access uncomment the line below:
-    # ports:
-    #   - "8080:8080"   # DEV ONLY — exposes backend HTTP directly; remove before production
+                      # Port 8080 is NOT bound to the host here (production-safe).
+                      # To expose it locally use: docker compose -f docker-compose.yml -f docker-compose.override.yml up
+                      # or just: docker compose up  (override.yml is auto-loaded by Docker Compose)
     restart: unless-stopped
 
   # ── Frontend ────────────────────────────────────────────────────────────────

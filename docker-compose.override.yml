@@ -1,0 +1,27 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# LOCAL DEV OVERRIDE — automatically merged by Docker Compose when you run:
+#
+#   docker compose up           ← loads docker-compose.yml + this file
+#   docker compose up --build   ← same
+#
+# For production / CI (no override):
+#   docker compose -f docker-compose.yml up --build
+#
+# Changes vs the base file:
+#   - app: binds port 8080 to the host so Postman / curl can reach the backend directly
+#   - db:  binds port 5432 to the host so pgAdmin / psql can connect locally
+#
+# ⚠️  DO NOT commit sensitive values here. This file is safe to commit because
+#     it only adds port bindings — no credentials.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  app:
+    ports:
+      - "8080:8080"   # DEV: expose backend HTTP for Postman / curl (bypasses Nginx)
+
+  db:
+    ports:
+      - "5432:5432"   # DEV: expose PostgreSQL for pgAdmin / psql / IntelliJ DB tools
+

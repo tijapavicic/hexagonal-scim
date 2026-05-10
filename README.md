@@ -289,15 +289,24 @@ cd frontend && npm install && npm run dev
 ### Run everything with Docker Compose (with auth)
 
 ```bash
-#docker compose up --build
 docker compose down -v && docker compose up --build
 ```
 
-| Service | URL                    |
-|---------|------------------------|
+Docker Compose automatically merges `docker-compose.override.yml` — this exposes port 8080 (backend) and 5432 (PostgreSQL) to the host for local development.
+
+| Service | URL |
+|---------|-----|
 | Frontend (React) | https://localhost:3000 |
-| Backend (Spring Boot) | http://localhost:8080 |
+| Backend (Spring Boot) | http://localhost:8080 (dev only — via override) |
 | Keycloak admin | https://localhost:8443 |
+
+**Production / CI — skip the dev override:**
+
+```bash
+docker compose -f docker-compose.yml up --build
+```
+
+Port 8080 is NOT exposed on the host. All external API traffic flows through Nginx on port 3000.
 
 Login with `testuser / password` or `adminuser / password` — Keycloak redirects back automatically.
 
@@ -488,12 +497,14 @@ openssl req -new -newkey rsa:2048 -nodes \
 
 ### v0.0.3 (2026-05-10)
 
-**Close backend port 8080 to the host (CRITICAL 1 from TODO)**
+**Profile-based port exposure — port 8080 closed in production, open in local dev**
 
 | Area | What changed |
 |------|--------------|
-| **`docker-compose.yml`** | Removed `ports: "8080:8080"` from `app` service. Replaced with `expose: "8080"` — backend is now only reachable through Nginx on the internal `hexagonal-net` bridge network. Host port binding commented out with a DEV-ONLY note for anyone who needs direct Postman/curl access. |
-| **Security posture** | JWT bearer tokens can no longer be intercepted via unencrypted `http://localhost:8080`. All external API traffic now flows through Nginx (HTTPS, port 3000). |
+| **`docker-compose.yml`** | Removed `ports: "8080:8080"` from `app` service. Uses `expose: "8080"` — backend is internal-only on `hexagonal-net`. |
+| **`docker-compose.override.yml`** (NEW) | Auto-loaded by Docker Compose when running locally (`docker compose up`). Adds `ports: "8080:8080"` for backend Postman/curl access and `ports: "5432:5432"` for DB tools. |
+| **CI / production** | Run `docker compose -f docker-compose.yml up` — override is skipped, port 8080 stays closed, all external traffic via Nginx HTTPS. |
+| **Security posture** | JWT bearer tokens can no longer be intercepted via unencrypted `http://localhost:8080` in non-dev environments. |
 
 ---
 

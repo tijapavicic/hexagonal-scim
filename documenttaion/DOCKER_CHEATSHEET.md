@@ -229,8 +229,12 @@ docker compose config
 ## This Project — hexagonal-scim
 
 ```bash
-# Full clean start (wipes Keycloak DB, re-imports realm)
+# Full clean start — LOCAL DEV (loads docker-compose.override.yml automatically)
+# Port 8080 (backend) and 5432 (PostgreSQL) are exposed to the host
 docker compose down -v && docker compose up --build
+
+# PRODUCTION / CI — base file only, no override, port 8080 closed
+docker compose -f docker-compose.yml down -v && docker compose -f docker-compose.yml up --build
 
 # Start in background
 docker compose down -v && docker compose up -d --build

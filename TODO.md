@@ -8,10 +8,10 @@
 ## 🔴 Critical — Before Production
 
 - [x] **CRITICAL 1 — Close port 8080 to the host**  
-  Removed `ports: "8080:8080"` from `app` service in `docker-compose.yml`.  
-  Backend is now only reachable through Nginx on `hexagonal-net`.  
-  Added `expose: "8080"` so Nginx can still proxy to it.  
-  _(Note: port 8080 remains exposed in the dev compose for Postman/curl convenience — see comment in file)_
+  `docker-compose.yml` (base) uses `expose: "8080"` — port is internal only, not bound to the host.  
+  `docker-compose.override.yml` is **auto-loaded by Docker Compose locally** and adds `ports: "8080:8080"`.  
+  CI/staging/production run with `docker compose -f docker-compose.yml up` — override is skipped, port stays closed.  
+  Local dev runs `docker compose up` — override is auto-merged, port 8080 is open for Postman/curl.
 
 - [ ] **CRITICAL 2 — Replace self-signed TLS certificate**  
   `docker/certs/server.crt` is a self-signed dev cert. Replace before staging/production.  

@@ -79,11 +79,11 @@
 
 ## 🧪 Testing
 
-- [ ] **Integration tests with Testcontainers**  
+- [x] **Integration tests with Testcontainers**  
   Replace H2 in integration tests with a real PostgreSQL container.  
   Catches Flyway/dialect issues early (two such bugs were found in production during this session).
 
-- [ ] **Security tests**  
+- [x] **Security tests**  
   Verify: 401 without token, 403 wrong role, token expiry, replay attack with revoked token.
 
 ---

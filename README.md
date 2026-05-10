@@ -486,6 +486,17 @@ openssl req -new -newkey rsa:2048 -nodes \
 
 ## Versions
 
+### v0.0.3 (2026-05-10)
+
+**Close backend port 8080 to the host (CRITICAL 1 from TODO)**
+
+| Area | What changed |
+|------|--------------|
+| **`docker-compose.yml`** | Removed `ports: "8080:8080"` from `app` service. Replaced with `expose: "8080"` — backend is now only reachable through Nginx on the internal `hexagonal-net` bridge network. Host port binding commented out with a DEV-ONLY note for anyone who needs direct Postman/curl access. |
+| **Security posture** | JWT bearer tokens can no longer be intercepted via unencrypted `http://localhost:8080`. All external API traffic now flows through Nginx (HTTPS, port 3000). |
+
+---
+
 ### v0.0.2 (2026-05-10)
 
 **HTTPS everywhere + Keycloak healthcheck fix**

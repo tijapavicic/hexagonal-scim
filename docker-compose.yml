@@ -121,8 +121,12 @@ services:
       start_period: 30s
     networks:
       - hexagonal-net
-    ports:
-      - "8080:8080"   # HTTP — direct API access for Postman / curl
+    expose:
+      - "8080"        # Internal only — Nginx proxies /api/* to http://app:8080 on hexagonal-net.
+                      # Port is NOT bound to the host in production.
+                      # For local Postman / curl access uncomment the line below:
+    # ports:
+    #   - "8080:8080"   # DEV ONLY — exposes backend HTTP directly; remove before production
     restart: unless-stopped
 
   # ── Frontend ────────────────────────────────────────────────────────────────

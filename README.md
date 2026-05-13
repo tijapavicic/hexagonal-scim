@@ -383,6 +383,30 @@ flowchart LR
 - `hex-outbound-adapter-payment-db`: product/payment JPA + payment strategy adapter that depends on `hex-payment-core`.
 - `hex-application`: runnable Spring Boot app and wiring (`config`) that depends on all modules.
 
+## Dependency Boundaries (Enforced)
+
+The repository enforces a strict hexagonal dependency direction: dependencies point inward to core modules, and integration tests run only in `hex-application`.
+
+| Module | Role | May depend on | Must not depend on | Test type allowed in module |
+|---|---|---|---|---|
+| `hex-core` | User domain + ports | JDK (+ test libs) | Spring Web/Data/JPA, adapters, application | Unit tests only |
+| `hex-payment-core` | Product/payment domain + ports | JDK (+ test libs) | Spring Web/Data/JPA, adapters, application | Unit tests only |
+| `hex-inbound-adapter-web` | User HTTP adapter | `hex-core`, web/validation/security libs | DB adapters, `hex-application` | Unit/slice tests (no integration bootstrap) |
+| `hex-inbound-adapter-payment-web` | Product/payment HTTP adapter | `hex-payment-core`, web/validation libs | DB adapters, `hex-application` | Unit/slice tests (no integration bootstrap) |
+| `hex-outbound-adapter-db` | User persistence adapter | `hex-core`, Spring Data/JPA | Inbound adapters, `hex-application` | Unit tests only |
+| `hex-outbound-adapter-payment-db` | Product/payment persistence + strategy adapter | `hex-payment-core`, Spring Data/JPA | Inbound adapters, `hex-application` | Unit tests only |
+| `hex-application` | Composition root + runtime wiring | All modules + runtime infra (`Flyway`, DB drivers, Boot starters) | N/A | Integration tests (`@SpringBootTest`, Testcontainers) |
+
+- Integration-style tests are blocked outside `hex-application` by `scripts/enforce-integration-tests-location.sh` (executed during Maven `validate`).
+- Runtime DB drivers are owned by `hex-application`; adapter modules stay runtime-agnostic.
+
+#### PR checklist (hexagonal constraints)
+
+- [ ] No integration tests outside `hex-application`.
+- [ ] No DB drivers declared in adapter `pom.xml` files.
+- [ ] Adapter dependencies are inward-only (no adapter-to-adapter coupling).
+- [ ] Full verification passed: `mvn -B clean verify`.
+
 ## Database migrations
 
 - Schema is migration-driven with Flyway.

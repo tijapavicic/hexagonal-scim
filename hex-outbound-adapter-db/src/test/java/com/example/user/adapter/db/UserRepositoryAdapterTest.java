@@ -2,37 +2,58 @@ package com.example.user.adapter.db;
 
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@DataJpaTest
-@Import(UserRepositoryAdapter.class)
+@ExtendWith(MockitoExtension.class)
 class UserRepositoryAdapterTest {
 
-    @Autowired
+    @Mock
+    private UserJpaRepository userJpaRepository;
+
     private UserRepositoryAdapter adapter;
+
+    @BeforeEach
+    void setUp() {
+        adapter = new UserRepositoryAdapter(userJpaRepository);
+    }
 
     // ─── save / find ──────────────────────────────────────────────────────────
 
     @Test
     void saveAndFindRoundTrip() {
+        UserEntity savedEntity = new UserEntity("bob@example.com", "Bob");
+        withId(savedEntity, 10L);
+        when(userJpaRepository.save(any(UserEntity.class))).thenReturn(savedEntity);
+        when(userJpaRepository.findById(10L)).thenReturn(Optional.of(savedEntity));
+
         User saved = adapter.save(new User(null, "bob@example.com", "Bob"));
 
-        assertTrue(saved.id() != null);
+        assertEquals(10L, saved.id());
         assertEquals("bob@example.com", adapter.findById(saved.id()).orElseThrow().email());
     }
 
     @Test
     void findByIdReturnsEmptyForNonExistentId() {
+        when(userJpaRepository.findById(999999L)).thenReturn(Optional.empty());
+
         assertTrue(adapter.findById(999999L).isEmpty());
     }
 
@@ -40,7 +61,8 @@ class UserRepositoryAdapterTest {
 
     @Test
     void detectsExistingEmailCaseInsensitively() {
-        adapter.save(new User(null, "sam@example.com", "Sam"));
+        when(userJpaRepository.existsByEmailIgnoreCase("SAM@example.com")).thenReturn(true);
+        when(userJpaRepository.existsByEmailIgnoreCase("sam@example.com")).thenReturn(true);
 
         assertTrue(adapter.existsByEmail("SAM@example.com"));
         assertTrue(adapter.existsByEmail("sam@example.com"));
@@ -48,6 +70,8 @@ class UserRepositoryAdapterTest {
 
     @Test
     void existsByEmailReturnsFalseForUnknownEmail() {
+        when(userJpaRepository.existsByEmailIgnoreCase("nobody@example.com")).thenReturn(false);
+
         assertFalse(adapter.existsByEmail("nobody@example.com"));
     }
 
@@ -55,6 +79,9 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedReturnsEmptyWhenNoRows() {
+        when(userJpaRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), Pageable.ofSize(10), 0));
+
         PagedUsers result = adapter.findAll(0, 10);
 
         assertTrue(result.content().isEmpty());
@@ -64,9 +91,12 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedReturnsCorrectWindow() {
-        adapter.save(new User(null, "a@example.com", "A"));
-        adapter.save(new User(null, "b@example.com", "B"));
-        adapter.save(new User(null, "c@example.com", "C"));
+        UserEntity a = new UserEntity("a@example.com", "A");
+        withId(a, 1L);
+        UserEntity b = new UserEntity("b@example.com", "B");
+        withId(b, 2L);
+        when(userJpaRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(a, b), Pageable.ofSize(2), 3));
 
         PagedUsers page = adapter.findAll(0, 2);
 
@@ -78,9 +108,10 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedSecondPageReturnsRemainingEntry() {
-        adapter.save(new User(null, "x@example.com", "X"));
-        adapter.save(new User(null, "y@example.com", "Y"));
-        adapter.save(new User(null, "z@example.com", "Z"));
+        UserEntity z = new UserEntity("z@example.com", "Z");
+        withId(z, 3L);
+        when(userJpaRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(z), Pageable.ofSize(2).withPage(1), 3));
 
         PagedUsers page2 = adapter.findAll(1, 2);
 
@@ -91,9 +122,18 @@ class UserRepositoryAdapterTest {
 
     @Test
     void pageSizeIsClampedToMax100() {
-        for (int i = 1; i <= 5; i++) {
-            adapter.save(new User(null, "clamp" + i + "@example.com", "U" + i));
-        }
+        UserEntity u1 = new UserEntity("clamp1@example.com", "U1");
+        withId(u1, 1L);
+        UserEntity u2 = new UserEntity("clamp2@example.com", "U2");
+        withId(u2, 2L);
+        UserEntity u3 = new UserEntity("clamp3@example.com", "U3");
+        withId(u3, 3L);
+        UserEntity u4 = new UserEntity("clamp4@example.com", "U4");
+        withId(u4, 4L);
+        UserEntity u5 = new UserEntity("clamp5@example.com", "U5");
+        withId(u5, 5L);
+        when(userJpaRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(u1, u2, u3, u4, u5), Pageable.ofSize(100), 5));
 
         PagedUsers result = adapter.findAll(0, 9999);
 
@@ -104,7 +144,10 @@ class UserRepositoryAdapterTest {
 
     @Test
     void negativePageNumberIsClampedToZero() {
-        adapter.save(new User(null, "neg@example.com", "Neg"));
+        UserEntity entity = new UserEntity("neg@example.com", "Neg");
+        withId(entity, 1L);
+        when(userJpaRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(entity), Pageable.ofSize(10), 1));
 
         PagedUsers result = adapter.findAll(-5, 10);
 
@@ -116,6 +159,8 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllUnpagedReturnsEmptyWhenNoRows() {
+        when(userJpaRepository.findAll(any(Sort.class))).thenReturn(List.of());
+
         List<User> all = adapter.findAll();
 
         assertTrue(all.isEmpty());
@@ -123,9 +168,13 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllUnpagedReturnsEveryRow() {
-        adapter.save(new User(null, "x@example.com", "X"));
-        adapter.save(new User(null, "y@example.com", "Y"));
-        adapter.save(new User(null, "z@example.com", "Z"));
+        UserEntity x = new UserEntity("x@example.com", "X");
+        withId(x, 1L);
+        UserEntity y = new UserEntity("y@example.com", "Y");
+        withId(y, 2L);
+        UserEntity z = new UserEntity("z@example.com", "Z");
+        withId(z, 3L);
+        when(userJpaRepository.findAll(any(Sort.class))).thenReturn(List.of(x, y, z));
 
         List<User> all = adapter.findAll();
 
@@ -134,9 +183,13 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllUnpagedIsSortedByIdAscending() {
-        User a = adapter.save(new User(null, "first@example.com", "First"));
-        User b = adapter.save(new User(null, "second@example.com", "Second"));
-        User c = adapter.save(new User(null, "third@example.com", "Third"));
+        UserEntity a = new UserEntity("first@example.com", "First");
+        withId(a, 1L);
+        UserEntity b = new UserEntity("second@example.com", "Second");
+        withId(b, 2L);
+        UserEntity c = new UserEntity("third@example.com", "Third");
+        withId(c, 3L);
+        when(userJpaRepository.findAll(any(Sort.class))).thenReturn(List.of(a, b, c));
 
         List<User> all = adapter.findAll();
 
@@ -149,20 +202,25 @@ class UserRepositoryAdapterTest {
 
     @Test
     void updatePersistsFieldChanges() {
-        User saved = adapter.save(new User(null, "before@example.com", "Before"));
+        UserEntity existing = new UserEntity("before@example.com", "Before");
+        withId(existing, 4L);
+        when(userJpaRepository.findById(4L)).thenReturn(Optional.of(existing));
+        when(userJpaRepository.save(existing)).thenReturn(existing);
 
-        User updated = adapter.update(new User(saved.id(), "after@example.com", "After"));
+        User updated = adapter.update(new User(4L, "after@example.com", "After"));
 
         assertEquals("after@example.com", updated.email());
         assertEquals("After", updated.displayName());
-        assertEquals(saved.id(), updated.id());
-        // verify persisted — re-read from DB
-        User reloaded = adapter.findById(saved.id()).orElseThrow();
-        assertEquals("after@example.com", reloaded.email());
+        assertEquals(4L, updated.id());
+        assertEquals("after@example.com", existing.getEmail());
+
+        verify(userJpaRepository).save(existing);
     }
 
     @Test
     void updateNonExistentIdThrowsIllegalStateException() {
+        when(userJpaRepository.findById(99999L)).thenReturn(Optional.empty());
+
         assertThrows(IllegalStateException.class,
                 () -> adapter.update(new User(99999L, "ghost@example.com", "Ghost")));
     }
@@ -171,16 +229,25 @@ class UserRepositoryAdapterTest {
 
     @Test
     void deleteRemovesRow() {
-        User saved = adapter.save(new User(null, "todelete@example.com", "ToDelete"));
+        adapter.deleteById(5L);
 
-        adapter.deleteById(saved.id());
-
-        assertTrue(adapter.findById(saved.id()).isEmpty());
+        verify(userJpaRepository).deleteById(5L);
     }
 
     @Test
     void deleteNonExistentIdDoesNotThrow() {
-        // Spring Data's deleteById is a no-op for missing IDs — not a domain error
         adapter.deleteById(99999L);
+
+        verify(userJpaRepository).deleteById(99999L);
+    }
+
+    private static void withId(UserEntity entity, Long id) {
+        try {
+            var idField = UserEntity.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, id);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Failed to set UserEntity id in test", ex);
+        }
     }
 }

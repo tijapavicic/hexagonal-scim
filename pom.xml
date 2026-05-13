@@ -14,8 +14,11 @@
 
     <modules>
         <module>hex-core</module>
+        <module>hex-payment-core</module>
         <module>hex-inbound-adapter-web</module>
+        <module>hex-inbound-adapter-payment-web</module>
         <module>hex-outbound-adapter-db</module>
+        <module>hex-outbound-adapter-payment-db</module>
         <module>hex-application</module>
     </modules>
 

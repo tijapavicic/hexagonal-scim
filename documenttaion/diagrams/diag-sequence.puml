@@ -1,8 +1,6 @@
 @startuml
-title Hexagonal SCIM - Sequence Diagram (Aligned Presentation Theme)
+title Hexagonal SCIM - Sequence Diagram (User + Payment/Product Split)
 
-scale 0.5
-' Theme aligned with component diagram tones
 skinparam backgroundColor #0D1117
 skinparam shadowing false
 skinparam roundCorner 12
@@ -15,152 +13,135 @@ skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true
 skinparam ParticipantBorderColor #30363D
 skinparam ParticipantBackgroundColor #161B22
-skinparam ParticipantFontColor #E6EDF3
 skinparam LifelineBorderColor #4B5563
 skinparam LifelineBackgroundColor #0F172A
 skinparam NoteBackgroundColor #1F2937
 skinparam NoteBorderColor #374151
 skinparam NoteFontColor #D1D5DB
 
-actor "API Client" as Client #93C5FD
-participant "UserControllerAdapter\n(hex-inbound-adapter-web)" as Controller #38BDF8
-participant "CreateUserPort\n(hex-core port.in)" as CreatePort #818CF8
-participant "GetUserPort\n(hex-core port.in)" as GetPort #818CF8
-participant "UserService\n(hex-core)" as Service #C4B5FD
-participant "UserRepositoryPort\n(hex-core port.out)" as RepoPort #A78BFA
-participant "UserRepositoryAdapter\n(hex-outbound-adapter-db)" as RepoAdapter #34D399
-participant "UserJpaRepository\n(Spring Data)" as JpaRepo #6EE7B7
-database "PostgreSQL / H2" as Db #FCA5A5
-participant "ApiExceptionHandlerAdapter" as ExHandler #38BDF8
-participant "LegacyApiDeprecationProperties" as LegacyProps #22D3EE
+actor "API Client" as Client
+participant "HexagonalScimApplication\n(hex-application)" as App
+participant "UserConfig / ProductConfig\nPaymentConfig" as AppConfig
 
-== Flow 1: Create User (Versioned Endpoint) ==
-Client -> Controller: POST /api/v1/users\n{email, displayName}
-activate Controller
-Controller -> CreatePort: create(email, displayName)
-activate CreatePort
-CreatePort -> Service: create(email, displayName)
-activate Service
-Service -> RepoPort: existsByEmail(email)
-activate RepoPort
-RepoPort -> RepoAdapter: existsByEmail(email)
-activate RepoAdapter
-RepoAdapter -> JpaRepo: existsByEmailIgnoreCase(email)
-activate JpaRepo
-JpaRepo -> Db: SELECT by email
-Db --> JpaRepo: false
-JpaRepo --> RepoAdapter: false
-RepoAdapter --> RepoPort: false
-deactivate JpaRepo
-deactivate RepoAdapter
-deactivate RepoPort
+participant "UserControllerAdapter\n(hex-inbound-adapter-web)" as UserController
+participant "UserService\n(hex-core)" as UserService
+participant "UserRepositoryAdapter\n(hex-outbound-adapter-db)" as UserRepo
 
-Service -> RepoPort: save(User)
-activate RepoPort
-RepoPort -> RepoAdapter: save(User)
-activate RepoAdapter
-RepoAdapter -> JpaRepo: save(UserEntity)
-activate JpaRepo
-JpaRepo -> Db: INSERT users
-Db --> JpaRepo: persisted row
-JpaRepo --> RepoAdapter: UserEntity(id,...)
-RepoAdapter --> RepoPort: User(id,...)
-RepoPort --> Service: User(id,...)
-deactivate JpaRepo
-deactivate RepoAdapter
-deactivate RepoPort
+participant "ProductControllerAdapter\n(hex-inbound-adapter-payment-web)" as ProductController
+participant "PaymentControllerAdapter\n(hex-inbound-adapter-payment-web)" as PaymentController
+participant "ProductService\n(hex-payment-core)" as ProductService
+participant "PaymentService\n(hex-payment-core)" as PaymentService
+participant "ProductRepositoryAdapter\n(hex-outbound-adapter-payment-db)" as ProductRepo
+participant "PaymentRepositoryAdapter\n(hex-outbound-adapter-payment-db)" as PaymentRepo
+participant "PaymentStrategyRegistry\n(hex-outbound-adapter-payment-db)" as StrategyRegistry
+participant "PayPal/BankTransfer/Ideal\nGatewayAdapters" as Gateway
 
-Service --> CreatePort: User(id,...)
-CreatePort --> Controller: User(id,...)
-Controller --> Client: 201 Created\nUserResponse
-deactivate Service
-deactivate CreatePort
-deactivate Controller
+database "PostgreSQL / H2" as Db
 
-== Flow 2: Create User (Duplicate Email) ==
-Client -> Controller: POST /api/v1/users\n{email already exists}
-activate Controller
-Controller -> CreatePort: create(email, displayName)
-activate CreatePort
-CreatePort -> Service: create(email, displayName)
-activate Service
-Service -> RepoPort: existsByEmail(email)
-activate RepoPort
-RepoPort -> RepoAdapter: existsByEmail(email)
-activate RepoAdapter
-RepoAdapter -> JpaRepo: existsByEmailIgnoreCase(email)
-activate JpaRepo
-JpaRepo -> Db: SELECT by email
-Db --> JpaRepo: true
-JpaRepo --> RepoAdapter: true
-RepoAdapter --> RepoPort: true
-RepoPort --> Service: true
-deactivate JpaRepo
-deactivate RepoAdapter
-deactivate RepoPort
+== Composition Root Bootstrap ==
+App -> AppConfig: create beans + wire ports/adapters
+AppConfig --> UserService: UserService bean
+AppConfig --> ProductService: ProductService bean
+AppConfig --> PaymentService: PaymentService bean
+AppConfig --> UserRepo: UserRepositoryPort impl
+AppConfig --> ProductRepo: ProductRepositoryPort impl
+AppConfig --> PaymentRepo: PaymentRepositoryPort impl
+AppConfig --> StrategyRegistry: PaymentStrategyPort impl
 
-Service --> CreatePort: throws DuplicateUserException
-CreatePort --> Controller: exception bubbles
-Controller -> ExHandler: handleDuplicate(ex)
-activate ExHandler
-ExHandler --> Client: 409 Conflict\n{code: USER_ALREADY_EXISTS}
-deactivate ExHandler
-deactivate Service
-deactivate CreatePort
-deactivate Controller
+== Flow 1: User Create ==
+Client -> UserController: POST /api/v1/users
+activate UserController
+UserController -> UserService: create(email, displayName)
+activate UserService
+UserService -> UserRepo: existsByEmail(email)
+activate UserRepo
+UserRepo -> Db: SELECT users by email
+Db --> UserRepo: false
+UserRepo --> UserService: false
+UserService -> UserRepo: save(User)
+UserRepo -> Db: INSERT users
+Db --> UserRepo: persisted row
+UserRepo --> UserService: User(id,...)
+UserService --> UserController: User(id,...)
+UserController --> Client: 201 Created
+deactivate UserRepo
+deactivate UserService
+deactivate UserController
 
-== Flow 3: Get User (Legacy Endpoint + Deprecation Headers) ==
-Client -> Controller: GET /api/users/{id}
-activate Controller
-Controller -> LegacyProps: read deprecation-value/sunset-date/successor-link
-activate LegacyProps
-LegacyProps --> Controller: header values
-deactivate LegacyProps
+== Flow 2: Product Create ==
+Client -> ProductController: POST /api/v1/products
+activate ProductController
+ProductController -> ProductService: create(name, price, stock...)
+activate ProductService
+ProductService -> ProductRepo: existsByName(name)
+activate ProductRepo
+ProductRepo -> Db: SELECT products by name
+Db --> ProductRepo: false
+ProductRepo --> ProductService: false
+ProductService -> ProductRepo: save(Product)
+ProductRepo -> Db: INSERT products
+Db --> ProductRepo: persisted row
+ProductRepo --> ProductService: Product(id,...)
+ProductService --> ProductController: Product(id,...)
+ProductController --> Client: 201 Created
+deactivate ProductRepo
+deactivate ProductService
+deactivate ProductController
 
-note right of Controller
-Adds response headers for legacy path:
-- Deprecation
-- Sunset
-- Link
-end note
+== Flow 3: Payment Initiation ==
+Client -> PaymentController: POST /api/v1/payments
+activate PaymentController
+PaymentController -> PaymentService: initiate(productId, qty, method)
+activate PaymentService
+PaymentService -> ProductRepo: findById(productId)
+activate ProductRepo
+ProductRepo -> Db: SELECT product
+Db --> ProductRepo: Product(stock, price)
+ProductRepo --> PaymentService: Product(...)
+deactivate ProductRepo
 
-Controller -> GetPort: getById(id)
-activate GetPort
-GetPort -> Service: getById(id)
-activate Service
-Service -> RepoPort: findById(id)
-activate RepoPort
-RepoPort -> RepoAdapter: findById(id)
-activate RepoAdapter
-RepoAdapter -> JpaRepo: findById(id)
-activate JpaRepo
-JpaRepo -> Db: SELECT users by id
-Db --> JpaRepo: empty
-JpaRepo --> RepoAdapter: Optional.empty
-RepoAdapter --> RepoPort: Optional.empty
-RepoPort --> Service: Optional.empty
-deactivate JpaRepo
-deactivate RepoAdapter
-deactivate RepoPort
+PaymentService -> PaymentRepo: save(PENDING)
+activate PaymentRepo
+PaymentRepo -> Db: INSERT payment(PENDING)
+Db --> PaymentRepo: payment row
+PaymentRepo --> PaymentService: Payment(id,PENDING)
+deactivate PaymentRepo
 
-Service --> GetPort: throws UserNotFoundException
-GetPort --> Controller: exception bubbles
-Controller -> ExHandler: handleNotFound(ex)
-activate ExHandler
-ExHandler --> Client: 404 Not Found + legacy headers\n{code: USER_NOT_FOUND}
-deactivate ExHandler
-deactivate Service
-deactivate GetPort
-deactivate Controller
+PaymentService -> StrategyRegistry: resolve(paymentMethod)
+activate StrategyRegistry
+StrategyRegistry --> PaymentService: PaymentGatewayPort
+PaymentService -> Gateway: process(payment)
+Gateway --> PaymentService: COMPLETED
+deactivate StrategyRegistry
+
+PaymentService -> PaymentRepo: save(COMPLETED)
+activate PaymentRepo
+PaymentRepo -> Db: UPDATE payment(COMPLETED)
+Db --> PaymentRepo: updated row
+PaymentRepo --> PaymentService: Payment(id,COMPLETED)
+deactivate PaymentRepo
+
+PaymentService -> ProductRepo: update(stock - qty)
+activate ProductRepo
+ProductRepo -> Db: UPDATE product stock
+Db --> ProductRepo: updated
+ProductRepo --> PaymentService: Product(...)
+deactivate ProductRepo
+
+PaymentService --> PaymentController: PaymentResponse
+PaymentController --> Client: 201 Created
+deactivate PaymentService
+deactivate PaymentController
 
 legend right
-|= Tone |= Meaning |
-|<#38BDF8> Inbound Web | Controller + exception handling |
-|<#818CF8> Inbound Ports | Use-case interfaces |
-|<#A78BFA> Outbound Port | Persistence abstraction |
-|<#34D399> Outbound Adapter | DB adapter implementation |
-|<#C4B5FD> Core | Business logic |
-|<#FCA5A5> Data Store | PostgreSQL / H2 |
+|= Module |= Responsibility |
+| hex-application | composition root / bean wiring |
+| hex-inbound-adapter-web | user API entrypoints |
+| hex-core | user domain + ports |
+| hex-outbound-adapter-db | user persistence adapter |
+| hex-inbound-adapter-payment-web | product/payment API entrypoints |
+| hex-payment-core | product/payment domain + ports |
+| hex-outbound-adapter-payment-db | payment/product persistence + gateways |
 endlegend
 
 @enduml

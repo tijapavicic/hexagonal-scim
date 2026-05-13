@@ -50,18 +50,56 @@ hexagonal-scim/
 │       ├── UserJpaRepository.java
 │       └── UserEntity.java
 │
+├── hex-payment-core/                                # Product/Payment domain + ports (no dependencies on other modules)
+│   └── src/main/java/com/example/user/
+│       ├── model/
+│       │   ├── Product.java
+│       │   ├── Payment.java
+│       │   ├── PaymentMethod.java
+│       │   └── PaymentStatus.java
+│       ├── core/
+│       │   ├── ProductService.java
+│       │   └── PaymentService.java
+│       └── port/
+│           ├── in/
+│           │   ├── CreateProductPort.java
+│           │   └── InitiatePaymentPort.java
+│           └── out/
+│               ├── ProductRepositoryPort.java
+│               ├── PaymentRepositoryPort.java
+│               ├── PaymentGatewayPort.java
+│               └── PaymentStrategyPort.java
+│
+├── hex-inbound-adapter-payment-web/                 # Payment/Product REST adapter → depends on hex-payment-core
+│   └── src/main/java/com/example/user/api/payment/
+│       ├── ProductControllerAdapter.java
+│       ├── PaymentControllerAdapter.java
+│       ├── PaymentApiExceptionHandler.java
+│       └── dto/
+│
+├── hex-outbound-adapter-payment-db/                 # Payment/Product JPA + strategy adapters → depends on hex-payment-core
+│   └── src/main/java/com/example/user/
+│       ├── adapter/payment/db/
+│       ├── adapter/payment/
+│       └── config/
+│
 ├── hex-application/                                 # Boot entry + wiring → depends on all modules
 │   └── src/main/
 │       ├── java/com/example/user/
 │       │   ├── HexagonalScimApplication.java
 │       │   └── config/
-│       │       └── UserConfig.java
+│       │       ├── UserConfig.java
+│       │       ├── ProductConfig.java
+│       │       └── PaymentConfig.java
 │       └── resources/
 │           ├── application.yml
 │           ├── application-docker.yml
 │           └── db/migration/
 │               ├── V1__create_users_table.sql
-│               └── V2__next_change_template.sql
+│               ├── V2__next_change_template.sql
+│               ├── V3__add_sample_users.sql
+│               ├── V4__create_products_table.sql
+│               └── V5__create_payments_table.sql
 │
 └── postman/
     ├── hexagonal-scim.postman_collection.json
@@ -71,13 +109,12 @@ hexagonal-scim/
 ## Architecture
 
 ```
+   USER FLOW
                         ┌─────────────────────────────┐
                         │   hex-inbound-adapter-web   │
                         │  ┌───────────────────────┐  │
           HTTP REST ───►│  │ UserControllerAdapter │  │
-          (v1 + legacy) │  │ ApiExceptionHandler   │  │
-                        │  │ LegacyDeprecation      │  │
-                        │  │       Props            │  │
+                        │  │ ApiExceptionHandler   │  │
                         └──┼───────────────────────┼──┘
                            │      port.in           │
               ┌────────────▼────────────────────────▼─────────────┐
@@ -85,11 +122,10 @@ hexagonal-scim/
               │   ╔══════════════════════════════════╗             │
               │   ║   CreateUserPort  GetUserPort    ║  port.in   │
               │   ╠══════════════════════════════════╣             │
-              │   ║          UserService             ║  domain    │
-              │   ║    User  ·  DuplicateUserEx      ║             │
-              │   ║         UserNotFoundException    ║             │
+              │   ║          UserService             ║  domain     │
+              │   ║    User · Duplicate/UserNotFound ║             │
               │   ╠══════════════════════════════════╣             │
-              │   ║       UserRepositoryPort         ║  port.out  │
+              │   ║       UserRepositoryPort         ║  port.out   │
               │   ╚══════════════════════════════════╝             │
               └────────────┬────────────────────────┬─────────────┘
                            │      port.out           │
@@ -101,18 +137,56 @@ hexagonal-scim/
                         │   hex-outbound-adapter-db   │
                         └─────────────────────────────┘
 
-     ┌──────────────────────────────────────────────────────────┐
-     │                    hex-application                        │
-     │   HexagonalScimApplication  ·  UserConfig (bean wiring)  │
-     │   application.yml  ·  application-docker.yml             │
-     │   Flyway: V1__create_users_table  ·  V2__template        │
-     └──────────────────────────────────────────────────────────┘
+
+   PRODUCT/PAYMENT FLOW
+                   ┌───────────────────────────────────────┐
+                   │  hex-inbound-adapter-payment-web      │
+                   │  ┌─────────────────────────────────┐  │
+    HTTP REST ────►│  │ ProductControllerAdapter       │  │
+                   │  │ PaymentControllerAdapter       │  │
+                   │  │ PaymentApiExceptionHandler     │  │
+                   │  └─────────────────────────────────┘  │
+                   └───────────────┬───────────────────────┘
+                                   │ port.in
+              ┌────────────────────▼────────────────────────────┐
+              │               hex-payment-core                   │
+              │ ╔══════════════════════════════════════════════╗ │
+              │ ║ Create/Get/Update/DeleteProductPort          ║ │
+              │ ║ Initiate/Get/GetAllPaymentPort               ║ │
+              │ ╠══════════════════════════════════════════════╣ │
+              │ ║ ProductService · PaymentService              ║ │
+              │ ║ Product · Payment · PaymentMethod/Status     ║ │
+              │ ╠══════════════════════════════════════════════╣ │
+              │ ║ ProductRepositoryPort · PaymentRepositoryPort║ │
+              │ ║ PaymentStrategyPort · PaymentGatewayPort     ║ │
+              │ ╚══════════════════════════════════════════════╝ │
+              └───────────────┬───────────────────────┬─────────┘
+                              │ port.out              │ strategy
+               ┌──────────────▼──────────────┐    ┌──▼────────────────────────┐
+               │ hex-outbound-adapter-       │    │ hex-outbound-adapter-      │
+               │ payment-db (JPA)            │    │ payment-db (Gateway impls) │
+               │ Product/Payment RepoAdapter │    │ BankAccount/PayPal/IDEAL   │
+               │ ProductEntity/PaymentEntity │    │ PaymentStrategyRegistry     │
+               └──────────────┬──────────────┘    └────────────────────────────┘
+                              │
+                      PostgreSQL / H2
+
+
+     ┌────────────────────────────────────────────────────────────┐
+     │                      hex-application                       │
+     │  HexagonalScimApplication                                 │
+     │  UserConfig · ProductConfig · PaymentConfig (bean wiring)│
+     │  Flyway: V1 users · V4 products · V5 payments            │
+     └────────────────────────────────────────────────────────────┘
 
   Module dependency rules:
   hex-inbound-adapter-web ──► hex-core
   hex-outbound-adapter-db ──► hex-core
+  hex-inbound-adapter-payment-web ──► hex-payment-core
+  hex-outbound-adapter-payment-db ──► hex-payment-core
   hex-application         ──► all modules
   hex-core                ──► (none)
+  hex-payment-core        ──► (none)
 ```
 
 ## Architecture (Interactive)
@@ -125,42 +199,86 @@ flowchart LR
         Postman(["📬 Postman\nCollection"])
     end
 
-    subgraph WEB["📦 hex-inbound-adapter-web"]
+    subgraph WEB_USER["📦 hex-inbound-adapter-web"]
         direction TB
-        Controller["UserControllerAdapter\n/api/v1/users\n/api/users (legacy⚠️)"]
-        ExHandler["ApiExceptionHandlerAdapter"]
+        UserController["UserControllerAdapter\n/api/v1/users\n/api/users (legacy⚠️)"]
+        UserExHandler["ApiExceptionHandlerAdapter"]
         LegacyProps["LegacyApiDeprecationProperties\nDeprecation · Sunset · Link"]
     end
 
-    subgraph CORE["⬡ hex-core  (no module dependencies)"]
+    subgraph WEB_PAY["📦 hex-inbound-adapter-payment-web"]
         direction TB
-        subgraph INPORTS["Inbound Ports (port.in)"]
-            CreatePort(["CreateUserPort"])
-            GetPort(["GetUserPort"])
+        ProductController["ProductControllerAdapter\n/api/v1/products"]
+        PaymentController["PaymentControllerAdapter\n/api/v1/payments"]
+        PaymentExHandler["PaymentApiExceptionHandler"]
+    end
+
+    subgraph CORE_USER["⬡ hex-core  (no module dependencies)"]
+        direction TB
+        subgraph USER_IN["Inbound Ports (port.in)"]
+            CreateUser(["CreateUserPort"])
+            GetUser(["GetUserPort"])
         end
-        subgraph DOMAIN["Domain"]
+        subgraph USER_DOMAIN["Domain"]
             UserService["UserService"]
             UserModel["User"]
             DupEx["DuplicateUserException"]
             NotFoundEx["UserNotFoundException"]
         end
-        subgraph OUTPORTS["Outbound Ports (port.out)"]
-            RepoPort(["UserRepositoryPort"])
+        subgraph USER_OUT["Outbound Ports (port.out)"]
+            UserRepoPort(["UserRepositoryPort"])
         end
     end
 
-    subgraph DB["📦 hex-outbound-adapter-db"]
+    subgraph CORE_PAY["⬡ hex-payment-core  (no module dependencies)"]
         direction TB
-        RepoAdapter["UserRepositoryAdapter"]
-        JpaRepo["UserJpaRepository\n(Spring Data)"]
-        Entity["UserEntity"]
+        subgraph PAY_IN["Inbound Ports (port.in)"]
+            ProductPorts(["Create/Get/Update/DeleteProductPort"])
+            PaymentPorts(["Initiate/Get/GetAllPaymentPort"])
+        end
+        subgraph PAY_DOMAIN["Domain"]
+            ProductService["ProductService"]
+            PaymentService["PaymentService"]
+            ProductModel["Product"]
+            PaymentModel["Payment"]
+            PaymentEnums["PaymentMethod · PaymentStatus"]
+        end
+        subgraph PAY_OUT["Outbound Ports (port.out)"]
+            ProductRepoPort(["ProductRepositoryPort"])
+            PaymentRepoPort(["PaymentRepositoryPort"])
+            StrategyPort(["PaymentStrategyPort"])
+            GatewayPort(["PaymentGatewayPort"])
+        end
+    end
+
+    subgraph DB_USER["📦 hex-outbound-adapter-db"]
+        direction TB
+        UserRepoAdapter["UserRepositoryAdapter"]
+        UserJpaRepo["UserJpaRepository\n(Spring Data)"]
+        UserEntity["UserEntity"]
+    end
+
+    subgraph DB_PAY["📦 hex-outbound-adapter-payment-db"]
+        direction TB
+        ProductRepoAdapter["ProductRepositoryAdapter"]
+        PaymentRepoAdapter["PaymentRepositoryAdapter"]
+        ProductJpaRepo["ProductJpaRepository"]
+        PaymentJpaRepo["PaymentJpaRepository"]
+        ProductEntity["ProductEntity"]
+        PaymentEntity["PaymentEntity"]
+        StrategyRegistry["PaymentStrategyRegistry"]
+        BankGateway["BankTransferGatewayAdapter\n(BANK_ACCOUNT)"]
+        PayPalGateway["PayPalGatewayAdapter"]
+        IdealGateway["IdealGatewayAdapter"]
     end
 
     subgraph APP["📦 hex-application"]
         direction TB
         Boot["HexagonalScimApplication"]
-        Config["UserConfig\n(bean wiring)"]
-        Flyway["Flyway Migrations\nV1 · V2"]
+        UserConfig["UserConfig\n(bean wiring)"]
+        ProductConfig["ProductConfig"]
+        PaymentConfig["PaymentConfig"]
+        Flyway["Flyway Migrations\nV1..V5"]
     end
 
     subgraph EXT_RIGHT["🗄️ External (Outbound)"]
@@ -169,42 +287,89 @@ flowchart LR
         H2[("H2\ntests / local")]
     end
 
-    Client -->|POST · GET| Controller
-    Postman -->|API tests| Controller
-    Controller --> CreatePort
-    Controller --> GetPort
-    LegacyProps -.->|header values| Controller
-    ExHandler -.->|maps| DupEx
-    ExHandler -.->|maps| NotFoundEx
+    Client -->|POST · GET users| UserController
+    Client -->|CRUD products / payments| ProductController
+    Client -->|Pay by BANK_ACCOUNT / PAYPAL / IDEAL| PaymentController
+    Postman -->|API tests| UserController
+    Postman -->|API tests| ProductController
+    Postman -->|API tests| PaymentController
 
-    CreatePort & GetPort --> UserService
-    UserService --> RepoPort
+    UserController --> CreateUser
+    UserController --> GetUser
+    LegacyProps -.->|header values| UserController
+    UserExHandler -.->|maps| DupEx
+    UserExHandler -.->|maps| NotFoundEx
+
+    ProductController --> ProductPorts
+    PaymentController --> PaymentPorts
+    PaymentExHandler -.->|maps product/payment errors| PaymentService
+
+    CreateUser & GetUser --> UserService
+    UserService --> UserRepoPort
     UserService --> UserModel
 
-    RepoPort -.->|implemented by| RepoAdapter
-    RepoAdapter --> JpaRepo
-    RepoAdapter <-.->|maps| Entity
+    ProductPorts --> ProductService
+    PaymentPorts --> PaymentService
+    ProductService --> ProductModel
+    PaymentService --> PaymentModel
+    PaymentService --> PaymentEnums
+    ProductService --> ProductRepoPort
+    PaymentService --> PaymentRepoPort
+    PaymentService --> StrategyPort
+    StrategyPort --> GatewayPort
 
-    JpaRepo --> Pg
-    JpaRepo --> H2
+    UserRepoPort -.->|implemented by| UserRepoAdapter
+    UserRepoAdapter --> UserJpaRepo
+    UserRepoAdapter <-.->|maps| UserEntity
 
-    Config -.->|wires| CreatePort & GetPort & RepoPort
-    Config -.->|creates| RepoAdapter
-    Boot --> Config
+    ProductRepoPort -.->|implemented by| ProductRepoAdapter
+    PaymentRepoPort -.->|implemented by| PaymentRepoAdapter
+    ProductRepoAdapter --> ProductJpaRepo
+    PaymentRepoAdapter --> PaymentJpaRepo
+    ProductRepoAdapter <-.->|maps| ProductEntity
+    PaymentRepoAdapter <-.->|maps| PaymentEntity
+
+    StrategyPort -.->|implemented by| StrategyRegistry
+    StrategyRegistry --> BankGateway
+    StrategyRegistry --> PayPalGateway
+    StrategyRegistry --> IdealGateway
+    BankGateway -.->|returns PENDING| PaymentService
+    PayPalGateway -.->|returns COMPLETED| PaymentService
+    IdealGateway -.->|returns COMPLETED| PaymentService
+
+    UserJpaRepo --> Pg
+    UserJpaRepo --> H2
+    ProductJpaRepo --> Pg
+    PaymentJpaRepo --> Pg
+    ProductJpaRepo --> H2
+    PaymentJpaRepo --> H2
+
+    UserConfig -.->|wires| CreateUser & GetUser & UserRepoPort
+    ProductConfig -.->|wires| ProductPorts & ProductRepoPort
+    PaymentConfig -.->|wires| PaymentPorts & PaymentRepoPort & StrategyPort
+    Boot --> UserConfig
+    Boot --> ProductConfig
+    Boot --> PaymentConfig
     Flyway -->|schema| Pg
 
-    style CORE fill:#172554,stroke:#818CF8,color:#E6EDF3
-    style WEB fill:#1E293B,stroke:#38BDF8,color:#E6EDF3
-    style DB fill:#1F2937,stroke:#34D399,color:#E6EDF3
+    style CORE_USER fill:#172554,stroke:#818CF8,color:#E6EDF3
+    style CORE_PAY fill:#1f3a8a,stroke:#60A5FA,color:#E6EDF3
+    style WEB_USER fill:#1E293B,stroke:#38BDF8,color:#E6EDF3
+    style WEB_PAY fill:#0f766e,stroke:#2DD4BF,color:#E6EDF3
+    style DB_USER fill:#1F2937,stroke:#34D399,color:#E6EDF3
+    style DB_PAY fill:#334155,stroke:#22D3EE,color:#E6EDF3
     style APP fill:#111827,stroke:#F59E0B,color:#E6EDF3
-    style INPORTS fill:#1e1b4b,stroke:#818CF8,color:#E6EDF3
-    style OUTPORTS fill:#2e1065,stroke:#A78BFA,color:#E6EDF3
-    style DOMAIN fill:#1e3a5f,stroke:#C4B5FD,color:#E6EDF3
+    style USER_IN fill:#1e1b4b,stroke:#818CF8,color:#E6EDF3
+    style USER_OUT fill:#2e1065,stroke:#A78BFA,color:#E6EDF3
+    style USER_DOMAIN fill:#1e3a5f,stroke:#C4B5FD,color:#E6EDF3
+    style PAY_IN fill:#0c4a6e,stroke:#7DD3FC,color:#E6EDF3
+    style PAY_OUT fill:#164e63,stroke:#67E8F9,color:#E6EDF3
+    style PAY_DOMAIN fill:#1e40af,stroke:#93C5FD,color:#E6EDF3
     style EXT_LEFT fill:#0f172a,stroke:#93C5FD,color:#E6EDF3
     style EXT_RIGHT fill:#0f172a,stroke:#FCA5A5,color:#E6EDF3
 ```
 
-> **Dependency rule**: arrows between modules only flow inward toward `hex-core`.  
+> **Dependency rule**: arrows between modules only flow inward toward `hex-core` or `hex-payment-core`.  
 > `hex-application` is the only module that depends on all others and owns all bean wiring.
 
 ## Modules
@@ -212,6 +377,9 @@ flowchart LR
 - `hex-core`: domain, input/output ports, and use cases.
 - `hex-inbound-adapter-web`: REST API adapter (`api`) that depends on `hex-core`.
 - `hex-outbound-adapter-db`: JPA persistence adapter that depends on `hex-core`.
+- `hex-payment-core`: product/payment domain, input/output ports, and use cases.
+- `hex-inbound-adapter-payment-web`: product/payment REST API adapter that depends on `hex-payment-core`.
+- `hex-outbound-adapter-payment-db`: product/payment JPA + payment strategy adapter that depends on `hex-payment-core`.
 - `hex-application`: runnable Spring Boot app and wiring (`config`) that depends on all modules.
 
 ## Database migrations
@@ -221,6 +389,8 @@ flowchart LR
   - `V1__create_users_table.sql` — Initial schema with users table.
   - `V2__next_change_template.sql` — Placeholder for future changes.
   - `V3__add_sample_users.sql` — Sample data (25 test users) for local development and testing.
+  - `V4__create_products_table.sql` — Product catalog schema.
+  - `V5__create_payments_table.sql` — Payment transaction schema.
 - Hibernate is configured with `ddl-auto: validate` so startup fails if schema and mappings diverge.
 
 ## Production release checklist
@@ -251,6 +421,14 @@ flowchart LR
 - `PATCH  /api/v1/users/{id}`   — Partial update — at least one of `email` or `displayName`
 - `DELETE /api/v1/users/{id}`   — Delete a user (returns `204 No Content`)
 - `/api/users`                  — Legacy paths (deprecated, returns `Deprecation`, `Sunset`, `Link` headers)
+- `POST   /api/v1/products`     — Create product
+- `GET    /api/v1/products`     — List products
+- `GET    /api/v1/products/{id}`— Get product by ID
+- `PUT    /api/v1/products/{id}`— Update product
+- `DELETE /api/v1/products/{id}`— Delete product
+- `POST   /api/v1/payments`     — Initiate payment (`BANK_ACCOUNT`, `PAYPAL`, `IDEAL`)
+- `GET    /api/v1/payments`     — List payments
+- `GET    /api/v1/payments/{id}`— Get payment by ID
 
 ## API Documentation (Swagger UI)
 
@@ -563,7 +741,7 @@ openssl req -new -newkey rsa:2048 -nodes \
 
 | Area | What was added |
 |------|----------------|
-| **Architecture** | Multi-module hexagonal layout: `hex-core`, `hex-inbound-adapter-web`, `hex-outbound-adapter-db`, `hex-application` |
+| **Architecture** | Multi-module hexagonal layout: `hex-core`, `hex-payment-core`, `hex-inbound-adapter-web`, `hex-inbound-adapter-payment-web`, `hex-outbound-adapter-db`, `hex-outbound-adapter-payment-db`, `hex-application` |
 | **API** | Full CRUD REST API (`POST`, `GET`, `PUT`, `PATCH`, `DELETE`) on `/api/v1/users` |
 | **Legacy API** | Backward-compatible `/api/users` with `Deprecation`, `Sunset`, `Link` headers |
 | **Pagination** | `GET /api/v1/users?page=0&size=10` with `PagedUserResponse` |

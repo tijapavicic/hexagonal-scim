@@ -21,12 +21,27 @@
         </dependency>
         <dependency>
             <groupId>com.example.user</groupId>
+            <artifactId>hex-payment-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.example.user</groupId>
             <artifactId>hex-inbound-adapter-web</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.example.user</groupId>
+            <artifactId>hex-inbound-adapter-payment-web</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.example.user</groupId>
             <artifactId>hex-outbound-adapter-db</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.example.user</groupId>
+            <artifactId>hex-outbound-adapter-payment-db</artifactId>
             <version>${project.version}</version>
         </dependency>
 

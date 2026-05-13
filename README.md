@@ -99,7 +99,8 @@ hexagonal-scim/
 │               ├── V2__next_change_template.sql
 │               ├── V3__add_sample_users.sql
 │               ├── V4__create_products_table.sql
-│               └── V5__create_payments_table.sql
+│               ├── V5__create_payments_table.sql
+│               └── V6__seed_base_cat_house.sql
 │
 └── postman/
     ├── hexagonal-scim.postman_collection.json
@@ -391,6 +392,7 @@ flowchart LR
   - `V3__add_sample_users.sql` — Sample data (25 test users) for local development and testing.
   - `V4__create_products_table.sql` — Product catalog schema.
   - `V5__create_payments_table.sql` — Payment transaction schema.
+  - `V6__seed_base_cat_house.sql` — Seeds the single sellable product `BaseCatHouse`.
 - Hibernate is configured with `ddl-auto: validate` so startup fails if schema and mappings diverge.
 
 ## Production release checklist
@@ -429,6 +431,9 @@ flowchart LR
 - `POST   /api/v1/payments`     — Initiate payment (`BANK_ACCOUNT`, `PAYPAL`, `IDEAL`)
 - `GET    /api/v1/payments`     — List payments
 - `GET    /api/v1/payments/{id}`— Get payment by ID
+
+> **Current production phase**: product catalog is read-only and only `BaseCatHouse` is sellable.
+> Payment attempts for other product types are rejected.
 
 ## API Documentation (Swagger UI)
 

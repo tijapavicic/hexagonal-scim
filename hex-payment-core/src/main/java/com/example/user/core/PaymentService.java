@@ -1,5 +1,6 @@
 package com.example.user.core;
 
+import com.example.user.model.BaseCatHouse;
 import com.example.user.model.Payment;
 import com.example.user.model.PaymentMethod;
 import com.example.user.model.PaymentStatus;
@@ -35,6 +36,10 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
     public Payment initiate(Long productId, int quantity, PaymentMethod paymentMethod) {
         Product product = productRepositoryPort.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found for id: " + productId));
+
+        if (!BaseCatHouse.isSameProduct(product)) {
+            throw new UnsupportedProductException("Only BaseCatHouse can be sold in the current production phase.");
+        }
 
         if (quantity <= 0) {
             throw new IllegalArgumentException("quantity must be > 0");

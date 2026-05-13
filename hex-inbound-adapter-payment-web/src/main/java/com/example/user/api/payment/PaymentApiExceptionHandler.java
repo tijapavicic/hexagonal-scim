@@ -5,7 +5,9 @@ import com.example.user.core.DuplicateProductException;
 import com.example.user.core.InsufficientStockException;
 import com.example.user.core.PaymentNotFoundException;
 import com.example.user.core.PaymentProcessingException;
+import com.example.user.core.ProductCatalogModificationNotAllowedException;
 import com.example.user.core.ProductNotFoundException;
+import com.example.user.core.UnsupportedProductException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.core.annotation.Order;
@@ -46,6 +48,18 @@ public class PaymentApiExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ErrorResponse handlePaymentProcessing(PaymentProcessingException ex, HttpServletRequest req) {
         return new ErrorResponse("PAYMENT_PROCESSING_FAILED", ex.getMessage(), req.getRequestURI());
+    }
+
+    @ExceptionHandler(ProductCatalogModificationNotAllowedException.class)
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    public ErrorResponse handleCatalogReadOnly(ProductCatalogModificationNotAllowedException ex, HttpServletRequest req) {
+        return new ErrorResponse("PRODUCT_CATALOG_READ_ONLY", ex.getMessage(), req.getRequestURI());
+    }
+
+    @ExceptionHandler(UnsupportedProductException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ErrorResponse handleUnsupportedProduct(UnsupportedProductException ex, HttpServletRequest req) {
+        return new ErrorResponse("UNSUPPORTED_PRODUCT", ex.getMessage(), req.getRequestURI());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

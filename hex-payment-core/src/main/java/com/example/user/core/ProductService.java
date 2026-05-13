@@ -1,5 +1,6 @@
 package com.example.user.core;
 
+import com.example.user.model.BaseCatHouse;
 import com.example.user.model.Product;
 import com.example.user.port.in.CreateProductPort;
 import com.example.user.port.in.DeleteProductPort;
@@ -22,41 +23,38 @@ public class ProductService
 
     @Override
     public Product create(String name, String description, BigDecimal price, String currency, int stockQuantity) {
-        if (productRepositoryPort.existsByName(name)) {
-            throw new DuplicateProductException("Product already exists for name: " + name);
-        }
-        return productRepositoryPort.save(new Product(null, name, description, price, currency, stockQuantity));
+        throw new ProductCatalogModificationNotAllowedException(
+                "Product catalog is read-only in production phase. Only BaseCatHouse is sold currently.");
     }
 
     @Override
     public Product getById(Long id) {
-        return productRepositoryPort.findById(id)
+        Product product = productRepositoryPort.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found for id: " + id));
+        if (!BaseCatHouse.isSameProduct(product)) {
+            throw new ProductNotFoundException("Only BaseCatHouse is sellable in the current phase.");
+        }
+        return BaseCatHouse.from(product);
     }
 
     @Override
     public List<Product> getAll() {
-        return productRepositoryPort.findAll();
+        return productRepositoryPort.findAll().stream()
+                .filter(BaseCatHouse::isSameProduct)
+                .map(product -> (Product) BaseCatHouse.from(product))
+                .toList();
     }
 
     @Override
     public Product update(Long id, String name, String description, BigDecimal price, String currency, int stockQuantity) {
-        Product existing = productRepositoryPort.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found for id: " + id));
-
-        if (!existing.name().equalsIgnoreCase(name) && productRepositoryPort.existsByName(name)) {
-            throw new DuplicateProductException("Product already exists for name: " + name);
-        }
-
-        return productRepositoryPort.update(new Product(id, name, description, price, currency, stockQuantity));
+        throw new ProductCatalogModificationNotAllowedException(
+                "Product catalog is read-only in production phase. BaseCatHouse data is managed via migrations.");
     }
 
     @Override
     public void deleteById(Long id) {
-        if (productRepositoryPort.findById(id).isEmpty()) {
-            throw new ProductNotFoundException("Product not found for id: " + id);
-        }
-        productRepositoryPort.deleteById(id);
+        throw new ProductCatalogModificationNotAllowedException(
+                "Product catalog is read-only in production phase. Deletion is not allowed.");
     }
 }
 

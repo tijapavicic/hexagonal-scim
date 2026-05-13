@@ -1,5 +1,6 @@
 package com.example.user.adapter.payment.db;
 
+import com.example.user.model.BaseCatHouse;
 import com.example.user.model.Product;
 import com.example.user.port.out.ProductRepositoryPort;
 import org.springframework.data.domain.Sort;
@@ -64,7 +65,7 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
     }
 
     private Product toDomain(ProductEntity entity) {
-        return new Product(
+        Product product = new Product(
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
@@ -72,6 +73,10 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
                 entity.getCurrency(),
                 entity.getStockQuantity()
         );
+        if (BaseCatHouse.isSameProduct(product)) {
+            return BaseCatHouse.from(product);
+        }
+        return product;
     }
 }
 

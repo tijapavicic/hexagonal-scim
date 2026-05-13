@@ -79,6 +79,64 @@ jobs:
       - name: Build and test
         run: mvn -B --no-transfer-progress clean verify
 
+      - name: Set up Node.js (for Newman)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Start app in background
+        run: |
+          APP_JAR=$(ls -1 hex-application/target/hex-application-*.jar | grep -v '\.original$' | head -n1)
+          echo "Starting ${APP_JAR}"
+          nohup java -jar "${APP_JAR}" > app.log 2>&1 &
+
+      - name: Wait for app health endpoint
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8080/actuator/health >/dev/null; then
+              echo "App is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::App did not become healthy in time"
+          tail -200 app.log || true
+          exit 1
+
+      - name: Run v2 Postman collection (local folders)
+        run: |
+          mkdir -p test-results/newman
+          newman run postman/hexagonal-scim-v2.postman_collection.json \
+            --folder "1. Health" \
+            --folder "2. Products (BaseCatHouse only)" \
+            --folder "3. Payments" \
+            --reporters cli,junit \
+            --reporter-junit-export test-results/newman/release-newman-results.xml
+
+      - name: Upload Newman JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-junit-release-${{ github.run_id }}
+          path: test-results/newman/release-newman-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload app logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-log-newman-release
+          path: app.log
+          retention-days: 14
+
+      - name: Stop app process
+        if: always()
+        run: pkill -f 'hex-application-.*\.jar' || true
+
       - name: Cache OWASP NVD data
         uses: actions/cache@v4
         with:

@@ -472,6 +472,25 @@ Paths are configurable via `springdoc.swagger-ui.path` and `springdoc.api-docs.p
 - Environments: `postman/local.postman_environment.json` (no auth), `postman/local-docker.postman_environment.json` (with Keycloak)
 - Run **Keycloak → Get Token — testuser** first; the JWT is stored automatically and used by all API requests.
 
+## Newman (CLI API tests)
+
+- Main v2 collection: `postman/hexagonal-scim-v2.postman_collection.json`
+- Step-by-step guide: `TESTING.md`
+
+```bash
+# Install Newman once
+npm install -g newman
+
+# Run v2 collection (local mode)
+newman run postman/hexagonal-scim-v2.postman_collection.json
+
+# Run with local environment file
+newman run postman/hexagonal-scim-v2.postman_collection.json -e postman/local.postman_environment.json
+
+# Run in docker/auth mode environment
+newman run postman/hexagonal-scim-v2.postman_collection.json -e postman/local-docker.postman_environment.json
+```
+
 ## Frontend
 
 A React + TypeScript single-page application is included in the `frontend/` directory.

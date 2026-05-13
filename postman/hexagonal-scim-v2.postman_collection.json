@@ -1,0 +1,433 @@
+{
+  "info": {
+    "_postman_id": "4c2f0af1-9e35-4c78-8d0c-1a0c98fbe3f9",
+    "name": "hexagonal-scim v2.0.0 - users products payments",
+    "description": "Postman test collection for v2.0.0 release (BaseCatHouse + payments).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0. Auth (docker mode)",
+      "item": [
+        {
+          "name": "Get Token - testuser",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('access_token present', function () { pm.expect(json.access_token).to.be.a('string').and.not.empty; });",
+                  "pm.collectionVariables.set('accessToken', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{keycloakPublicClientId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "testuser",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "password",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "{{realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('status UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Products (BaseCatHouse only)",
+      "item": [
+        {
+          "name": "Get all products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const products = pm.response.json();",
+                  "pm.test('products is array', function () { pm.expect(products).to.be.an('array'); });",
+                  "pm.test('at least one product exists', function () { pm.expect(products.length).to.be.greaterThan(0); });",
+                  "const catHouse = products.find(p => (p.name || '').toLowerCase() === 'basecathouse'.toLowerCase()) || products[0];",
+                  "pm.collectionVariables.set('baseCatHouseId', String(catHouse.id));",
+                  "pm.test('baseCatHouseId captured', function () { pm.expect(pm.collectionVariables.get('baseCatHouseId')).to.not.be.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get product by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{baseCatHouseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "{{baseCatHouseId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const p = pm.response.json();",
+                  "pm.test('id matches', function () { pm.expect(String(p.id)).to.eql(pm.collectionVariables.get('baseCatHouseId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create product blocked (read-only policy)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AnotherProduct\",\n  \"description\": \"should fail\",\n  \"price\": 10.00,\n  \"currency\": \"EUR\",\n  \"stockQuantity\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 405', function () { pm.response.to.have.status(405); });",
+                  "const err = pm.response.json();",
+                  "pm.test('read-only code', function () { pm.expect(err.code).to.eql('PRODUCT_CATALOG_READ_ONLY'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Payments",
+      "item": [
+        {
+          "name": "Create payment EUR default (PAYPAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{baseCatHouseId}},\n  \"quantity\": 1,\n  \"paymentMethod\": \"PAYPAL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                  "const pay = pm.response.json();",
+                  "pm.test('id exists', function () { pm.expect(pay.id).to.exist; });",
+                  "pm.test('currency EUR', function () { pm.expect(pay.currency).to.eql('EUR'); });",
+                  "pm.test('status COMPLETED for PAYPAL', function () { pm.expect(pay.status).to.eql('COMPLETED'); });",
+                  "pm.collectionVariables.set('paymentId', String(pay.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get payment by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "const pay = pm.response.json();",
+                  "pm.test('id matches', function () { pm.expect(String(pay.id)).to.eql(pm.collectionVariables.get('paymentId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create payment USD (IDEAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{baseCatHouseId}},\n  \"quantity\": 1,\n  \"paymentMethod\": \"IDEAL\",\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                  "const pay = pm.response.json();",
+                  "pm.test('currency USD', function () { pm.expect(pay.currency).to.eql('USD'); });",
+                  "pm.test('amount positive', function () { pm.expect(Number(pay.totalAmount)).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create payment with unsupported currency",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{baseCatHouseId}},\n  \"quantity\": 1,\n  \"paymentMethod\": \"PAYPAL\",\n  \"currency\": \"GBP\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () { pm.response.to.have.status(400); });",
+                  "const err = pm.response.json();",
+                  "pm.test('invalid request code', function () { pm.expect(err.code).to.eql('INVALID_REQUEST'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "https://localhost:8443"
+    },
+    {
+      "key": "realm",
+      "value": "hexagonal-scim"
+    },
+    {
+      "key": "keycloakPublicClientId",
+      "value": "hexagonal-scim-public"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "baseCatHouseId",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    }
+  ]
+}
+

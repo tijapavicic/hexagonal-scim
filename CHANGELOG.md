@@ -2,6 +2,41 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+- Postman v2 automated test collection for health, BaseCatHouse product policy, and payment flows:
+  - `postman/hexagonal-scim-v2.postman_collection.json`
+- Runnable test instructions:
+  - `TESTING.md`
+- CI/CD Newman gates with JUnit XML export and artifacts:
+  - `.github/workflows/ci.yml`
+  - `.github/workflows/release.yml`
+
+### Changed
+- README updated with Newman CLI execution examples and links to the v2 collection and testing guide.
+- Release workflow quality gate now validates API behavior before image push/tag creation.
+
+### Reproduce (commands used by this commit)
+
+```bash
+# 1) Build and test locally
+cd /Users/copor/IdeaProjects/hexagonal-scim
+mvn -B clean verify
+
+# 2) Run app locally (no Keycloak required)
+mvn -B -pl hex-application -am spring-boot:run
+
+# 3) Run Postman tests via Newman (v2 collection)
+newman run postman/hexagonal-scim-v2.postman_collection.json
+
+# 4) Optional: run only core smoke folders (same as CI/release workflows)
+newman run postman/hexagonal-scim-v2.postman_collection.json \
+  --folder "1. Health" \
+  --folder "2. Products (BaseCatHouse only)" \
+  --folder "3. Payments"
+```
+
 ## [2.0.0] - 2026-05-14
 
 ### Added

@@ -5,11 +5,14 @@ WORKDIR /workspace
 # Copy only POM files first so the dependency resolution layer is cached
 # independently from source changes. The layer is invalidated only when a
 # POM changes — not on every source edit.
-COPY pom.xml                              ./
-COPY hex-core/pom.xml                     hex-core/
-COPY hex-inbound-adapter-web/pom.xml      hex-inbound-adapter-web/
-COPY hex-outbound-adapter-db/pom.xml      hex-outbound-adapter-db/
-COPY hex-application/pom.xml              hex-application/
+COPY pom.xml                                        ./
+COPY hex-core/pom.xml                               hex-core/
+COPY hex-payment-core/pom.xml                       hex-payment-core/
+COPY hex-inbound-adapter-web/pom.xml                hex-inbound-adapter-web/
+COPY hex-inbound-adapter-payment-web/pom.xml        hex-inbound-adapter-payment-web/
+COPY hex-outbound-adapter-db/pom.xml                hex-outbound-adapter-db/
+COPY hex-outbound-adapter-payment-db/pom.xml        hex-outbound-adapter-payment-db/
+COPY hex-application/pom.xml                        hex-application/
 RUN mvn -B --no-transfer-progress dependency:go-offline -q
 
 # Copy source and build — only reaches here when source or a POM changed

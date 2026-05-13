@@ -417,6 +417,7 @@ The repository enforces a strict hexagonal dependency direction: dependencies po
   - `V4__create_products_table.sql` — Product catalog schema.
   - `V5__create_payments_table.sql` — Payment transaction schema.
   - `V6__seed_base_cat_house.sql` — Seeds the single sellable product `BaseCatHouse`.
+  - `V7__create_accounts_table.sql` — Creates user-owned accounts (`user` 1 -> N `accounts`).
 - Hibernate is configured with `ddl-auto: validate` so startup fails if schema and mappings diverge.
 
 ## Production release checklist
@@ -443,6 +444,10 @@ The repository enforces a strict hexagonal dependency direction: dependencies po
 - `POST   /api/v1/users`        — Create a new user
 - `GET    /api/v1/users`        — List all users (paginated), e.g., `GET /api/v1/users?page=0&size=10`
 - `GET    /api/v1/users/{id}`   — Get a user by ID
+- `POST   /api/v1/users/{id}/accounts`            — Create account for a user
+- `GET    /api/v1/users/{id}/accounts`            — List accounts for a user
+- `GET    /api/v1/users/{id}/accounts/{accountId}`— Get account by ID for a user
+- `DELETE /api/v1/users/{id}/accounts/{accountId}`— Delete account for a user
 - `PUT    /api/v1/users/{id}`   — Full replacement — both `email` and `displayName` required
 - `PATCH  /api/v1/users/{id}`   — Partial update — at least one of `email` or `displayName`
 - `DELETE /api/v1/users/{id}`   — Delete a user (returns `204 No Content`)

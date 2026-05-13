@@ -1,7 +1,9 @@
 package com.example.user.api;
 
 import com.example.user.api.dto.ErrorResponse;
+import com.example.user.core.AccountNotFoundException;
 import com.example.user.core.DuplicateUserException;
+import com.example.user.core.DuplicateAccountException;
 import com.example.user.core.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -44,6 +46,18 @@ public class ApiExceptionHandlerAdapter {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleNotFound(UserNotFoundException ex, HttpServletRequest req) {
         return error("USER_NOT_FOUND", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleAccountNotFound(AccountNotFoundException ex, HttpServletRequest req) {
+        return error("ACCOUNT_NOT_FOUND", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(DuplicateAccountException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDuplicateAccount(DuplicateAccountException ex, HttpServletRequest req) {
+        return error("ACCOUNT_ALREADY_EXISTS", ex.getMessage(), req);
     }
 
     // ─── Validation ───────────────────────────────────────────────────────────

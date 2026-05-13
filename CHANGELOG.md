@@ -12,10 +12,17 @@ All notable changes to this project are documented in this file.
 - CI/CD Newman gates with JUnit XML export and artifacts:
   - `.github/workflows/ci.yml`
   - `.github/workflows/release.yml`
+- User accounts feature in hexagonal style (one user -> zero..many accounts, one account -> one user):
+  - `Account` domain model + ports + `AccountService` in `hex-core`
+  - `AccountControllerAdapter` and account DTOs in `hex-inbound-adapter-web`
+  - account persistence adapter/JPA entity/repository in `hex-outbound-adapter-db`
+  - Flyway migration `V7__create_accounts_table.sql`
+  - tests: `AccountServiceTest`, `AccountControllerAdapterTest`, and application integration coverage
 
 ### Changed
 - README updated with Newman CLI execution examples and links to the v2 collection and testing guide.
 - Release workflow quality gate now validates API behavior before image push/tag creation.
+- README endpoint/migration sections updated for accounts API and `V7` migration.
 
 ### Reproduce (commands used by this commit)
 
@@ -35,6 +42,13 @@ newman run postman/hexagonal-scim-v2.postman_collection.json \
   --folder "1. Health" \
   --folder "2. Products (BaseCatHouse only)" \
   --folder "3. Payments"
+
+# 5) Accounts API quick check
+curl -i -X POST http://localhost:8080/api/v1/users/1/accounts \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Primary"}'
+
+curl -i http://localhost:8080/api/v1/users/1/accounts
 ```
 
 ## [2.0.0] - 2026-05-14

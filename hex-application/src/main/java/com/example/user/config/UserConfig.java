@@ -2,13 +2,21 @@ package com.example.user.config;
 
 import com.example.user.adapter.db.UserJpaRepository;
 import com.example.user.adapter.db.UserRepositoryAdapter;
+import com.example.user.adapter.db.AccountJpaRepository;
+import com.example.user.adapter.db.AccountRepositoryAdapter;
+import com.example.user.core.AccountService;
 import com.example.user.core.UserService;
+import com.example.user.port.in.CreateAccountPort;
 import com.example.user.port.in.CreateUserPort;
+import com.example.user.port.in.DeleteAccountPort;
 import com.example.user.port.in.DeleteUserPort;
+import com.example.user.port.in.GetAccountPort;
 import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
+import com.example.user.port.in.GetUserAccountsPort;
 import com.example.user.port.in.PatchUserPort;
 import com.example.user.port.in.UpdateUserPort;
+import com.example.user.port.out.AccountRepositoryPort;
 import com.example.user.port.out.UserRepositoryPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +44,11 @@ public class UserConfig {
     @Bean
     UserRepositoryPort userRepositoryPort(UserJpaRepository userJpaRepository) {
         return new UserRepositoryAdapter(userJpaRepository);
+    }
+
+    @Bean
+    AccountRepositoryPort accountRepositoryPort(AccountJpaRepository accountJpaRepository) {
+        return new AccountRepositoryAdapter(accountJpaRepository);
     }
 
     /**
@@ -85,5 +98,30 @@ public class UserConfig {
     @Bean
     DeleteUserPort deleteUserPort(UserService userServiceBean) {
         return userServiceBean::deleteById;
+    }
+
+    @Bean
+    AccountService accountServiceBean(UserRepositoryPort userRepositoryPort, AccountRepositoryPort accountRepositoryPort) {
+        return new AccountService(userRepositoryPort, accountRepositoryPort);
+    }
+
+    @Bean
+    CreateAccountPort createAccountPort(AccountService accountServiceBean) {
+        return accountServiceBean::create;
+    }
+
+    @Bean
+    GetUserAccountsPort getUserAccountsPort(AccountService accountServiceBean) {
+        return accountServiceBean::getAllByUserId;
+    }
+
+    @Bean
+    GetAccountPort getAccountPort(AccountService accountServiceBean) {
+        return accountServiceBean::getById;
+    }
+
+    @Bean
+    DeleteAccountPort deleteAccountPort(AccountService accountServiceBean) {
+        return accountServiceBean::deleteById;
     }
 }

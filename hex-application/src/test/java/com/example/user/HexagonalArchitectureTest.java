@@ -14,8 +14,11 @@ import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
  * <p>Module dependency rules:
  * <pre>
  *   hex-core                ──► (none)
+ *   hex-payment-core        ──► (none)
  *   hex-inbound-adapter-web ──► hex-core only
+ *   hex-inbound-adapter-payment-web ──► hex-payment-core only
  *   hex-outbound-adapter-db ──► hex-core only
+ *   hex-outbound-adapter-payment-db ──► hex-payment-core only
  *   hex-application         ──► all modules
  * </pre>
  *
@@ -35,6 +38,9 @@ class HexagonalArchitectureTest {
     /** Covers api, api.dto, api.config — all web-adapter code lives under this root. */
     private static final String WEB_API     = "com.example.user.api..";
     private static final String DB_ADAPTER  = "com.example.user.adapter.db..";
+    private static final String PAYMENT_ADAPTER = "com.example.user.adapter.payment..";
+    private static final String PAYMENT_DB_ADAPTER = "com.example.user.adapter.payment.db..";
+    private static final String APPLICATION_CONFIG = "com.example.user.config..";
 
     // ─── Rule 1: Core domain must not depend on any adapter ──────────────────
 
@@ -47,7 +53,7 @@ class HexagonalArchitectureTest {
     static final ArchRule domain_must_not_depend_on_adapters =
             noClasses().that().resideInAnyPackage(CORE, MODEL, PORT_IN, PORT_OUT)
                     .should().dependOnClassesThat()
-                    .resideInAnyPackage(WEB_API, DB_ADAPTER)
+                    .resideInAnyPackage(WEB_API, DB_ADAPTER, PAYMENT_ADAPTER, PAYMENT_DB_ADAPTER)
                     .because("Hexagonal architecture requires the domain to be independent of adapters; " +
                              "adapters depend on ports, not the other way around.");
 
@@ -61,7 +67,7 @@ class HexagonalArchitectureTest {
     static final ArchRule web_adapter_must_not_depend_on_db_adapter =
             noClasses().that().resideInAPackage(WEB_API)
                     .should().dependOnClassesThat()
-                    .resideInAPackage(DB_ADAPTER)
+                    .resideInAnyPackage(DB_ADAPTER, PAYMENT_ADAPTER, PAYMENT_DB_ADAPTER)
                     .because("Inbound and outbound adapters must remain decoupled; " +
                              "all communication goes through domain ports.");
 
@@ -73,13 +79,26 @@ class HexagonalArchitectureTest {
      */
     @ArchTest
     static final ArchRule db_adapter_must_not_depend_on_web_adapter =
-            noClasses().that().resideInAPackage(DB_ADAPTER)
+            noClasses().that().resideInAnyPackage(DB_ADAPTER, PAYMENT_ADAPTER, PAYMENT_DB_ADAPTER)
                     .should().dependOnClassesThat()
                     .resideInAPackage(WEB_API)
                     .because("Outbound adapters must only implement outbound ports; " +
                              "they must not be coupled to the HTTP layer.");
 
-    // ─── Rule 4: Core domain must not use Spring Web annotations/classes ─────
+    // ─── Rule 4: Composition root package must not leak into core/adapters ────
+
+    /**
+     * Bean wiring in {@code com.example.user.config} is composition-root code and
+     * must not be imported by domain or adapter packages.
+     */
+    @ArchTest
+    static final ArchRule composition_root_must_not_leak_into_domain_or_adapters =
+            noClasses().that().resideInAnyPackage(CORE, MODEL, PORT_IN, PORT_OUT, WEB_API, DB_ADAPTER, PAYMENT_ADAPTER, PAYMENT_DB_ADAPTER)
+                    .should().dependOnClassesThat()
+                    .resideInAnyPackage(APPLICATION_CONFIG)
+                    .because("Composition-root wiring must remain at the application boundary.");
+
+    // ─── Rule 5: Core domain must not use Spring Web annotations/classes ─────
 
     /**
      * Classes in the core domain and model packages must remain framework-agnostic.
@@ -93,7 +112,7 @@ class HexagonalArchitectureTest {
                     .because("Domain classes must be independent of the web framework; " +
                              "web concerns belong in the inbound adapter.");
 
-    // ─── Rule 5: Core domain must not use JPA / persistence annotations ──────
+    // ─── Rule 6: Core domain must not use JPA / persistence annotations ──────
 
     /**
      * Domain model and business logic must not reference JPA or any ORM framework.
@@ -107,7 +126,7 @@ class HexagonalArchitectureTest {
                     .because("Domain classes must be persistence-ignorant; " +
                              "JPA entities belong in the outbound adapter.");
 
-    // ─── Rule 6: Ports must stay framework-agnostic ──────────────────────────
+    // ─── Rule 7: Ports must stay framework-agnostic ──────────────────────────
 
     /**
      * Port interfaces define the boundary of the hexagon. They must contain
@@ -126,7 +145,7 @@ class HexagonalArchitectureTest {
                     .because("Ports are pure Java interfaces that form the hexagon boundary; " +
                              "framework imports break the abstraction and force dependencies on infrastructure.");
 
-    // ─── Rule 7: Layered architecture — allowed dependency directions ─────────
+    // ─── Rule 8: Layered architecture — allowed dependency directions ─────────
 
     /**
      * Full layered-architecture enforcement using the ArchUnit fluent DSL.
@@ -156,13 +175,13 @@ class HexagonalArchitectureTest {
                     .consideringOnlyDependenciesInLayers()
                     .layer("Core").definedBy(CORE, MODEL, PORT_IN, PORT_OUT)
                     .layer("WebAdapter").definedBy(WEB_API)
-                    .layer("DbAdapter").definedBy(DB_ADAPTER)
+                    .layer("DbAdapter").definedBy(DB_ADAPTER, PAYMENT_ADAPTER, PAYMENT_DB_ADAPTER)
                     // Application layer: root package + com.example.user.config.
                     // After moving web-adapter config to com.example.user.api.config (= WebAdapter),
                     // this package now exclusively contains UserConfig — the composition root.
                     .layer("Application").definedBy(
                             "com.example.user",          // HexagonalScimApplication
-                            "com.example.user.config.."  // UserConfig (wiring only)
+                            APPLICATION_CONFIG             // wiring only
                     )
                     .whereLayer("Core").mayNotAccessAnyLayer()
                     .whereLayer("WebAdapter").mayOnlyAccessLayers("Core")

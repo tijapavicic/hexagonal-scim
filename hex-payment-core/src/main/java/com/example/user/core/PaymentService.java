@@ -14,26 +14,37 @@ import com.example.user.port.out.PaymentStrategyPort;
 import com.example.user.port.out.ProductRepositoryPort;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetAllPaymentsPort {
+    private static final String EUR = "EUR";
+    private static final String USD = "USD";
 
     private final ProductRepositoryPort productRepositoryPort;
     private final PaymentRepositoryPort paymentRepositoryPort;
     private final PaymentStrategyPort paymentStrategyPort;
+    private final BigDecimal eurToUsdRate;
 
     public PaymentService(
             ProductRepositoryPort productRepositoryPort,
             PaymentRepositoryPort paymentRepositoryPort,
-            PaymentStrategyPort paymentStrategyPort
+            PaymentStrategyPort paymentStrategyPort,
+            BigDecimal eurToUsdRate
     ) {
         this.productRepositoryPort = productRepositoryPort;
         this.paymentRepositoryPort = paymentRepositoryPort;
         this.paymentStrategyPort = paymentStrategyPort;
+        this.eurToUsdRate = Objects.requireNonNull(eurToUsdRate, "eurToUsdRate must not be null");
+        if (eurToUsdRate.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("eurToUsdRate must be > 0");
+        }
     }
 
     @Override
-    public Payment initiate(Long productId, int quantity, PaymentMethod paymentMethod) {
+    public Payment initiate(Long productId, int quantity, PaymentMethod paymentMethod, String requestedCurrency) {
         Product product = productRepositoryPort.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found for id: " + productId));
 
@@ -51,14 +62,17 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
                             ", available: " + product.stockQuantity());
         }
 
-        BigDecimal totalAmount = product.price().multiply(BigDecimal.valueOf(quantity));
+        String chargeCurrency = resolveChargeCurrency(requestedCurrency, product.currency());
+        BigDecimal unitPrice = resolveUnitPrice(product, chargeCurrency);
+        BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity))
+                .setScale(2, RoundingMode.HALF_UP);
 
         Payment pending = paymentRepositoryPort.save(new Payment(
                 null,
                 productId,
                 quantity,
                 totalAmount,
-                product.currency(),
+                chargeCurrency,
                 PaymentStatus.PENDING,
                 paymentMethod
         ));
@@ -72,7 +86,7 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
                     pending.productId(),
                     pending.quantity(),
                     pending.totalAmount(),
-                    pending.currency(),
+                    chargeCurrency,
                     finalStatus,
                     pending.paymentMethod()
             ));
@@ -96,7 +110,7 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
                     pending.productId(),
                     pending.quantity(),
                     pending.totalAmount(),
-                    pending.currency(),
+                    chargeCurrency,
                     PaymentStatus.FAILED,
                     pending.paymentMethod()
             ));
@@ -114,6 +128,29 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
     @Override
     public List<Payment> getAll() {
         return paymentRepositoryPort.findAll();
+    }
+
+    private String resolveChargeCurrency(String requestedCurrency, String productCurrency) {
+        if (requestedCurrency == null || requestedCurrency.isBlank()) {
+            return productCurrency;
+        }
+        String normalized = requestedCurrency.toUpperCase(Locale.ROOT);
+        if (!EUR.equals(normalized) && !USD.equals(normalized)) {
+            throw new IllegalArgumentException("Unsupported currency: " + requestedCurrency + ". Allowed: EUR, USD");
+        }
+        return normalized;
+    }
+
+    private BigDecimal resolveUnitPrice(Product product, String chargeCurrency) {
+        String baseCurrency = product.currency().toUpperCase(Locale.ROOT);
+        if (chargeCurrency.equals(baseCurrency)) {
+            return product.price().setScale(2, RoundingMode.HALF_UP);
+        }
+        if (EUR.equals(baseCurrency) && USD.equals(chargeCurrency)) {
+            return product.price().multiply(eurToUsdRate).setScale(2, RoundingMode.HALF_UP);
+        }
+        throw new IllegalArgumentException(
+                "Unsupported currency conversion from " + product.currency() + " to " + chargeCurrency);
     }
 }
 

@@ -428,7 +428,7 @@ flowchart LR
 - `GET    /api/v1/products/{id}`— Get product by ID
 - `PUT    /api/v1/products/{id}`— Update product
 - `DELETE /api/v1/products/{id}`— Delete product
-- `POST   /api/v1/payments`     — Initiate payment (`BANK_ACCOUNT`, `PAYPAL`, `IDEAL`)
+- `POST   /api/v1/payments`     — Initiate payment (`BANK_ACCOUNT`, `PAYPAL`, `IDEAL`), optional `currency` (`EUR` default, `USD` supported)
 - `GET    /api/v1/payments`     — List payments
 - `GET    /api/v1/payments/{id}`— Get payment by ID
 

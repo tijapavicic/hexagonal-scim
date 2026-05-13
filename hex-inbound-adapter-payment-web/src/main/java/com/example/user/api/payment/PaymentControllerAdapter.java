@@ -39,7 +39,12 @@ public class PaymentControllerAdapter {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest request) {
-        Payment payment = initiatePaymentPort.initiate(request.productId(), request.quantity(), request.paymentMethod());
+        Payment payment = initiatePaymentPort.initiate(
+                request.productId(),
+                request.quantity(),
+                request.paymentMethod(),
+                request.currency()
+        );
         return toResponse(payment);
     }
 

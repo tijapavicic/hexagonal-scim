@@ -7,8 +7,11 @@ import com.example.user.port.in.InitiatePaymentPort;
 import com.example.user.port.out.PaymentRepositoryPort;
 import com.example.user.port.out.PaymentStrategyPort;
 import com.example.user.port.out.ProductRepositoryPort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.math.BigDecimal;
 
 @Configuration
 public class PaymentConfig {
@@ -17,9 +20,10 @@ public class PaymentConfig {
     PaymentService paymentServiceBean(
             ProductRepositoryPort productRepositoryPort,
             PaymentRepositoryPort paymentRepositoryPort,
-            PaymentStrategyPort paymentStrategyPort
+            PaymentStrategyPort paymentStrategyPort,
+            @Value("${payment.fx.eur-to-usd:1.10}") BigDecimal eurToUsdRate
     ) {
-        return new PaymentService(productRepositoryPort, paymentRepositoryPort, paymentStrategyPort);
+        return new PaymentService(productRepositoryPort, paymentRepositoryPort, paymentStrategyPort, eurToUsdRate);
     }
 
     @Bean

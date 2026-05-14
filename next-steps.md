@@ -93,10 +93,10 @@ POST /api/v1/payments
 - [x] Add outbound port `CreditAccountPort` — `void credit(Long accountId, BigDecimal amount)` (for top-up)
 
 #### Step B — `hex-outbound-adapter-db`: balance column + debit/credit implementation
-- [ ] Flyway `V8__add_balance_to_accounts.sql` — `ALTER TABLE accounts ADD COLUMN balance NUMERIC(19,4) NOT NULL DEFAULT 0`
-- [ ] Update `AccountEntity` to include `balance`
-- [ ] Implement `DebitAccountPort` in `AccountRepositoryAdapter` (atomic UPDATE with optimistic lock / check)
-- [ ] Implement `CreditAccountPort` in `AccountRepositoryAdapter`
+- [x] Flyway `V8__add_balance_to_accounts.sql` — `ALTER TABLE accounts ADD COLUMN balance NUMERIC(19,4) NOT NULL DEFAULT 0`
+- [x] Update `AccountEntity` to include `balance`
+- [x] Implement `DebitAccountPort` in `AccountRepositoryAdapter` (atomic UPDATE with optimistic lock / check)
+- [x] Implement `CreditAccountPort` in `AccountRepositoryAdapter`
 
 #### Step C — `hex-outbound-adapter-payment-db`: track userId + accountId on payment
 - [ ] Flyway `V9__add_user_account_to_payments.sql` — add `user_id BIGINT` and `account_id BIGINT` columns to `payments`

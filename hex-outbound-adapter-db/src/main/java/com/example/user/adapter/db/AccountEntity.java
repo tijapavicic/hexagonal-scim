@@ -8,6 +8,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "accounts", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"}))
 public class AccountEntity {
@@ -22,12 +24,16 @@ public class AccountEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false, precision = 19, scale = 4)
+    private BigDecimal balance;
+
     protected AccountEntity() {
     }
 
-    public AccountEntity(Long userId, String name) {
+    public AccountEntity(Long userId, String name, BigDecimal balance) {
         this.userId = userId;
         this.name = name;
+        this.balance = balance;
     }
 
     public Long getId() {
@@ -40,6 +46,10 @@ public class AccountEntity {
 
     public String getName() {
         return name;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
     }
 }
 

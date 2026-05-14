@@ -40,9 +40,14 @@ Think of it this way:
 
 ---
 
+you can run it with 
+```bash
+docker compose stop splunk && docker compose up splunk -d```
+```
+
 ## 2. Stack Overview
 
-```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Your Browser                             │
 │  http://localhost:3000   http://localhost:3001  http://localhost:8000  │

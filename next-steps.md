@@ -27,9 +27,9 @@ mvn -B clean verify
 
 ## 3) Observability and Operations
 
-- [ ] Add structured logs for account create/get/list/delete with `userId` and `accountId`.
-- [ ] Add metrics counters and error-rate tracking for account endpoints.
-- [ ] Confirm dashboards/alerts include account endpoint latency and 4xx/5xx trends.
+- [x] Add structured logs for account create/get/list/delete with `userId` and `accountId`.
+- [x] Add metrics counters and error-rate tracking for account endpoints.
+- [x] Confirm dashboards/alerts include account endpoint latency and 4xx/5xx trends.
 
 ## 4) Security and Governance
 

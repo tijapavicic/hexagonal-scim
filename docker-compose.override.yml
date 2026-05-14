@@ -118,6 +118,9 @@ services:
       SPLUNK_HEC_TOKEN:   11111111-1111-1111-1111-111111111111
     volumes:
       - splunk_data:/opt/splunk/var
+      # Suppress "allowedDomainList is empty" security warning — restricts email
+      # alert delivery to localhost only (email alerts unused in local dev).
+      - ./docker/splunk/alert_actions.conf:/opt/splunk/etc/system/local/alert_actions.conf:ro
     ports:
       - "8000:8000"   # Splunk Web UI
       - "8088:8088"   # HEC — receives logs from Fluent Bit

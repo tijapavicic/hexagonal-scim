@@ -4,9 +4,11 @@ import com.example.user.model.Account;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
 import com.example.user.port.out.AccountRepositoryPort;
+import com.example.user.port.out.CreditAccountPort;
 import com.example.user.port.out.UserRepositoryPort;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +25,8 @@ class AccountServiceTest {
     void createStoresAccountForExistingUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
         users.save(new User(null, "john@example.com", "John"));
-        AccountService service = new AccountService(users, new InMemoryAccountRepo());
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
 
         Account account = service.create(1L, "Main account");
 
@@ -34,7 +37,8 @@ class AccountServiceTest {
 
     @Test
     void createRejectsWhenUserMissing() {
-        AccountService service = new AccountService(new InMemoryUserRepo(), new InMemoryAccountRepo());
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(new InMemoryUserRepo(), accounts, new InMemoryCreditPort(accounts));
 
         assertThrows(UserNotFoundException.class, () -> service.create(99L, "Main account"));
     }
@@ -43,7 +47,8 @@ class AccountServiceTest {
     void createRejectsDuplicateAccountNamePerUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
         users.save(new User(null, "john@example.com", "John"));
-        AccountService service = new AccountService(users, new InMemoryAccountRepo());
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         service.create(1L, "Main account");
 
         assertThrows(DuplicateAccountException.class, () -> service.create(1L, "MAIN ACCOUNT"));
@@ -53,13 +58,14 @@ class AccountServiceTest {
     void getAllReturnsAccountsForUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
         users.save(new User(null, "john@example.com", "John"));
-        AccountService service = new AccountService(users, new InMemoryAccountRepo());
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         service.create(1L, "Main account");
         service.create(1L, "Savings");
 
-        List<Account> accounts = service.getAllByUserId(1L);
+        List<Account> userAccounts = service.getAllByUserId(1L);
 
-        assertEquals(2, accounts.size());
+        assertEquals(2, userAccounts.size());
     }
 
     @Test
@@ -67,7 +73,8 @@ class AccountServiceTest {
         InMemoryUserRepo users = new InMemoryUserRepo();
         users.save(new User(null, "john@example.com", "John"));
         users.save(new User(null, "jane@example.com", "Jane"));
-        AccountService service = new AccountService(users, new InMemoryAccountRepo());
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
 
         assertThrows(AccountNotFoundException.class, () -> service.getById(2L, account.id()));
@@ -77,12 +84,38 @@ class AccountServiceTest {
     void deleteRemovesAccount() {
         InMemoryUserRepo users = new InMemoryUserRepo();
         users.save(new User(null, "john@example.com", "John"));
-        AccountService service = new AccountService(users, new InMemoryAccountRepo());
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
 
         service.deleteById(1L, account.id());
 
         assertThrows(AccountNotFoundException.class, () -> service.getById(1L, account.id()));
+    }
+
+    @Test
+    void topUpIncreasesBalance() {
+        InMemoryUserRepo users = new InMemoryUserRepo();
+        users.save(new User(null, "john@example.com", "John"));
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
+        Account account = service.create(1L, "Main account");
+
+        Account toppedUp = service.topUp(1L, account.id(), new BigDecimal("100.00"));
+
+        assertEquals(new BigDecimal("100.00"), toppedUp.balance());
+    }
+
+    @Test
+    void topUpRejectsNegativeAmount() {
+        InMemoryUserRepo users = new InMemoryUserRepo();
+        users.save(new User(null, "john@example.com", "John"));
+        InMemoryAccountRepo accounts = new InMemoryAccountRepo();
+        AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
+        Account account = service.create(1L, "Main account");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.topUp(1L, account.id(), new BigDecimal("-1.00")));
     }
 
     private static final class InMemoryUserRepo implements UserRepositoryPort {
@@ -136,7 +169,7 @@ class AccountServiceTest {
         @Override
         public Account save(Account account) {
             long id = sequence.incrementAndGet();
-            Account saved = new Account(id, account.userId(), account.name());
+            Account saved = new Account(id, account.userId(), account.name(), account.balance());
             store.put(id, saved);
             return saved;
         }
@@ -164,6 +197,27 @@ class AccountServiceTest {
         @Override
         public void deleteById(Long id) {
             store.remove(id);
+        }
+
+        void update(Account account) {
+            store.put(account.id(), account);
+        }
+    }
+
+    private static final class InMemoryCreditPort implements CreditAccountPort {
+        private final InMemoryAccountRepo repo;
+
+        private InMemoryCreditPort(InMemoryAccountRepo repo) {
+            this.repo = repo;
+        }
+
+        @Override
+        public void credit(Long accountId, BigDecimal amount) {
+            Account existing = repo.store.get(accountId);
+            if (existing == null) {
+                throw new IllegalArgumentException("Account not found for id: " + accountId);
+            }
+            repo.update(new Account(existing.id(), existing.userId(), existing.name(), existing.balance().add(amount)));
         }
     }
 }

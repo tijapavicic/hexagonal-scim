@@ -169,7 +169,32 @@ class HexagonalScimApplicationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(accountId))
                 .andExpect(jsonPath("$.userId").value(1))
-                .andExpect(jsonPath("$.name").value("Primary"));
+                .andExpect(jsonPath("$.name").value("Primary"))
+                .andExpect(jsonPath("$.balance").value(0));
+    }
+
+    @Test
+    void topUpAccountUpdatesBalance() throws Exception {
+        String accountName = "Topup-" + System.nanoTime();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/users/1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + accountName + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long accountId = objectMapper.readTree(createResult.getResponse().getContentAsString()).path("id").asLong();
+
+        mockMvc.perform(post("/api/v1/users/1/accounts/{accountId}/topup", accountId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":100.00}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(accountId))
+                .andExpect(jsonPath("$.balance").value(100.00));
+
+        mockMvc.perform(get("/api/v1/users/1/accounts/{accountId}", accountId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(100.00));
     }
 
     @Test

@@ -2,11 +2,13 @@ package com.example.user.api;
 
 import com.example.user.api.dto.AccountResponse;
 import com.example.user.api.dto.CreateAccountRequest;
+import com.example.user.api.dto.TopUpAccountRequest;
 import com.example.user.model.Account;
 import com.example.user.port.in.CreateAccountPort;
 import com.example.user.port.in.DeleteAccountPort;
 import com.example.user.port.in.GetAccountPort;
 import com.example.user.port.in.GetUserAccountsPort;
+import com.example.user.port.in.TopUpAccountPort;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -41,6 +43,7 @@ public class AccountControllerAdapter {
     private final GetUserAccountsPort getUserAccountsPort;
     private final GetAccountPort getAccountPort;
     private final DeleteAccountPort deleteAccountPort;
+    private final TopUpAccountPort topUpAccountPort;
     private final MeterRegistry meterRegistry;
 
     public AccountControllerAdapter(
@@ -48,12 +51,14 @@ public class AccountControllerAdapter {
             GetUserAccountsPort getUserAccountsPort,
             GetAccountPort getAccountPort,
             DeleteAccountPort deleteAccountPort,
+            TopUpAccountPort topUpAccountPort,
             MeterRegistry meterRegistry
     ) {
         this.createAccountPort = createAccountPort;
         this.getUserAccountsPort = getUserAccountsPort;
         this.getAccountPort = getAccountPort;
         this.deleteAccountPort = deleteAccountPort;
+        this.topUpAccountPort = topUpAccountPort;
         this.meterRegistry = meterRegistry;
     }
 
@@ -88,7 +93,18 @@ public class AccountControllerAdapter {
         meterRegistry.counter(METRIC_NAME, "operation", "delete").increment();
     }
 
+    @PostMapping("/{accountId}/topup")
+    public AccountResponse topUp(
+            @PathVariable("userId") Long userId,
+            @PathVariable("accountId") Long accountId,
+            @Valid @RequestBody TopUpAccountRequest request
+    ) {
+        Account account = topUpAccountPort.topUp(userId, accountId, request.amount());
+        meterRegistry.counter(METRIC_NAME, "operation", "topup").increment();
+        return toResponse(account);
+    }
+
     private AccountResponse toResponse(Account account) {
-        return new AccountResponse(account.id(), account.userId(), account.name());
+        return new AccountResponse(account.id(), account.userId(), account.name(), account.balance());
     }
 }

@@ -118,11 +118,11 @@ POST /api/v1/payments
 - [x] Add `InsufficientFundsException` → 422 handler to `PaymentApiExceptionHandler`
 
 #### Step F — `hex-inbound-adapter-web`: add top-up endpoint
-- [ ] `POST /api/v1/users/{userId}/accounts/{accountId}/topup` with body `{ "amount": 100.00 }`
-- [ ] `TopUpAccountRequest` DTO with `@DecimalMin("0.01")` validation
-- [ ] New inbound port `TopUpAccountPort` in `hex-core`
-- [ ] Implement in `AccountService` / core — delegates to `CreditAccountPort`
-- [ ] Return updated `AccountResponse` (include `balance` field)
+- [x] `POST /api/v1/users/{userId}/accounts/{accountId}/topup` with body `{ "amount": 100.00 }`
+- [x] `TopUpAccountRequest` DTO with `@DecimalMin("0.01")` validation
+- [x] New inbound port `TopUpAccountPort` in `hex-core`
+- [x] Implement in `AccountService` / core — delegates to `CreditAccountPort`
+- [x] Return updated `AccountResponse` (include `balance` field)
 
 #### Step G — tests
 - [ ] Unit: `PaymentService` — insufficient funds → 422, exact deduction amount, failed payment leaves balance intact

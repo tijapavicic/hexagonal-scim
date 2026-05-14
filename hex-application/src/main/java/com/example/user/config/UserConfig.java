@@ -15,8 +15,10 @@ import com.example.user.port.in.GetAllUsersPort;
 import com.example.user.port.in.GetUserPort;
 import com.example.user.port.in.GetUserAccountsPort;
 import com.example.user.port.in.PatchUserPort;
+import com.example.user.port.in.TopUpAccountPort;
 import com.example.user.port.in.UpdateUserPort;
 import com.example.user.port.out.AccountRepositoryPort;
+import com.example.user.port.out.CreditAccountPort;
 import com.example.user.port.out.DebitAccountPort;
 import com.example.user.port.out.UserRepositoryPort;
 import org.springframework.context.annotation.Bean;
@@ -58,6 +60,14 @@ public class UserConfig {
             return debitAccountPort;
         }
         throw new IllegalStateException("Configured account repository does not implement DebitAccountPort");
+    }
+
+    @Bean
+    CreditAccountPort creditAccountPort(AccountRepositoryPort accountRepositoryPort) {
+        if (accountRepositoryPort instanceof CreditAccountPort creditAccountPort) {
+            return creditAccountPort;
+        }
+        throw new IllegalStateException("Configured account repository does not implement CreditAccountPort");
     }
 
     /**
@@ -110,8 +120,12 @@ public class UserConfig {
     }
 
     @Bean
-    AccountService accountServiceBean(UserRepositoryPort userRepositoryPort, AccountRepositoryPort accountRepositoryPort) {
-        return new AccountService(userRepositoryPort, accountRepositoryPort);
+    AccountService accountServiceBean(
+            UserRepositoryPort userRepositoryPort,
+            AccountRepositoryPort accountRepositoryPort,
+            CreditAccountPort creditAccountPort
+    ) {
+        return new AccountService(userRepositoryPort, accountRepositoryPort, creditAccountPort);
     }
 
     @Bean
@@ -132,5 +146,10 @@ public class UserConfig {
     @Bean
     DeleteAccountPort deleteAccountPort(AccountService accountServiceBean) {
         return accountServiceBean::deleteById;
+    }
+
+    @Bean
+    TopUpAccountPort topUpAccountPort(AccountService accountServiceBean) {
+        return accountServiceBean::topUp;
     }
 }

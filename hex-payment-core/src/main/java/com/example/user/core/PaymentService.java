@@ -6,8 +6,10 @@ import com.example.user.model.PaymentMethod;
 import com.example.user.model.PaymentStatus;
 import com.example.user.model.Product;
 import com.example.user.port.in.GetAllPaymentsPort;
+import com.example.user.port.in.GetAccountPort;
 import com.example.user.port.in.GetPaymentPort;
 import com.example.user.port.in.InitiatePaymentPort;
+import com.example.user.port.out.DebitAccountPort;
 import com.example.user.port.out.PaymentGatewayPort;
 import com.example.user.port.out.PaymentRepositoryPort;
 import com.example.user.port.out.PaymentStrategyPort;
@@ -26,17 +28,23 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
     private final ProductRepositoryPort productRepositoryPort;
     private final PaymentRepositoryPort paymentRepositoryPort;
     private final PaymentStrategyPort paymentStrategyPort;
+    private final GetAccountPort getAccountPort;
+    private final DebitAccountPort debitAccountPort;
     private final BigDecimal eurToUsdRate;
 
     public PaymentService(
             ProductRepositoryPort productRepositoryPort,
             PaymentRepositoryPort paymentRepositoryPort,
             PaymentStrategyPort paymentStrategyPort,
+            GetAccountPort getAccountPort,
+            DebitAccountPort debitAccountPort,
             BigDecimal eurToUsdRate
     ) {
         this.productRepositoryPort = productRepositoryPort;
         this.paymentRepositoryPort = paymentRepositoryPort;
         this.paymentStrategyPort = paymentStrategyPort;
+        this.getAccountPort = getAccountPort;
+        this.debitAccountPort = debitAccountPort;
         this.eurToUsdRate = Objects.requireNonNull(eurToUsdRate, "eurToUsdRate must not be null");
         if (eurToUsdRate.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("eurToUsdRate must be > 0");
@@ -44,7 +52,7 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
     }
 
     @Override
-    public Payment initiate(Long productId, int quantity, PaymentMethod paymentMethod, String requestedCurrency) {
+    public Payment initiate(Long userId, Long accountId, Long productId, int quantity, PaymentMethod paymentMethod, String requestedCurrency) {
         Product product = productRepositoryPort.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found for id: " + productId));
 
@@ -67,8 +75,20 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity))
                 .setScale(2, RoundingMode.HALF_UP);
 
+        if (userId != null || accountId != null) {
+            if (userId == null || accountId == null) {
+                throw new IllegalArgumentException("Both userId and accountId must be provided together");
+            }
+            BigDecimal balance = getAccountPort.getById(userId, accountId).balance();
+            if (balance.compareTo(totalAmount) < 0) {
+                throw new InsufficientFundsException("Insufficient funds for account id: " + accountId);
+            }
+        }
+
         Payment pending = paymentRepositoryPort.save(new Payment(
                 null,
+                userId,
+                accountId,
                 productId,
                 quantity,
                 totalAmount,
@@ -83,6 +103,8 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
             PaymentStatus finalStatus = gateway.process(pending);
             Payment finalized = paymentRepositoryPort.save(new Payment(
                     pending.id(),
+                    pending.userId(),
+                    pending.accountId(),
                     pending.productId(),
                     pending.quantity(),
                     pending.totalAmount(),
@@ -92,6 +114,9 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
             ));
 
             if (finalStatus == PaymentStatus.COMPLETED) {
+                if (pending.accountId() != null) {
+                    debitAccountPort.debit(pending.accountId(), pending.totalAmount());
+                }
                 int newStock = product.stockQuantity() - quantity;
                 productRepositoryPort.update(new Product(
                         product.id(),
@@ -107,6 +132,8 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
         } catch (RuntimeException ex) {
             paymentRepositoryPort.save(new Payment(
                     pending.id(),
+                    pending.userId(),
+                    pending.accountId(),
                     pending.productId(),
                     pending.quantity(),
                     pending.totalAmount(),

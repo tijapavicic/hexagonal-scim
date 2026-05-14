@@ -104,12 +104,12 @@ POST /api/v1/payments
 - [x] Update `PaymentRepositoryAdapter` mapping
 
 #### Step D — `hex-payment-core`: wire balance check + deduction into PaymentService
-- [ ] Add `userId` and `accountId` to `Payment` record
-- [ ] Update `InitiatePaymentPort.initiate()` signature to accept `userId` and `accountId`
-- [ ] Inject `DebitAccountPort` + `GetAccountPort` into `PaymentService`
-- [ ] Before saving PENDING: load account, check `balance >= totalAmount`, throw `InsufficientFundsException` if not
-- [ ] On COMPLETED: call `debitAccountPort.debit(accountId, totalAmount)`
-- [ ] Update `PaymentServiceTest` for new cases: insufficient funds, successful deduction, failed payment leaves balance unchanged
+- [x] Add `userId` and `accountId` to `Payment` record
+- [x] Update `InitiatePaymentPort.initiate()` signature to accept `userId` and `accountId`
+- [x] Inject `DebitAccountPort` + `GetAccountPort` into `PaymentService`
+- [x] Before saving PENDING: load account, check `balance >= totalAmount`, throw `InsufficientFundsException` if not
+- [x] On COMPLETED: call `debitAccountPort.debit(accountId, totalAmount)`
+- [x] Update `PaymentServiceTest` for new cases: insufficient funds, successful deduction, failed payment leaves balance unchanged
 
 #### Step E — `hex-inbound-adapter-payment-web`: update request/response DTOs
 - [ ] Add `userId` + `accountId` to `CreatePaymentRequest` (with `@NotNull` validation)

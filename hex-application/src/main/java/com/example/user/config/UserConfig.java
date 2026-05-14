@@ -17,6 +17,7 @@ import com.example.user.port.in.GetUserAccountsPort;
 import com.example.user.port.in.PatchUserPort;
 import com.example.user.port.in.UpdateUserPort;
 import com.example.user.port.out.AccountRepositoryPort;
+import com.example.user.port.out.DebitAccountPort;
 import com.example.user.port.out.UserRepositoryPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -49,6 +50,14 @@ public class UserConfig {
     @Bean
     AccountRepositoryPort accountRepositoryPort(AccountJpaRepository accountJpaRepository) {
         return new AccountRepositoryAdapter(accountJpaRepository);
+    }
+
+    @Bean
+    DebitAccountPort debitAccountPort(AccountRepositoryPort accountRepositoryPort) {
+        if (accountRepositoryPort instanceof DebitAccountPort debitAccountPort) {
+            return debitAccountPort;
+        }
+        throw new IllegalStateException("Configured account repository does not implement DebitAccountPort");
     }
 
     /**

@@ -2,8 +2,10 @@ package com.example.user.config;
 
 import com.example.user.core.PaymentService;
 import com.example.user.port.in.GetAllPaymentsPort;
+import com.example.user.port.in.GetAccountPort;
 import com.example.user.port.in.GetPaymentPort;
 import com.example.user.port.in.InitiatePaymentPort;
+import com.example.user.port.out.DebitAccountPort;
 import com.example.user.port.out.PaymentRepositoryPort;
 import com.example.user.port.out.PaymentStrategyPort;
 import com.example.user.port.out.ProductRepositoryPort;
@@ -21,9 +23,18 @@ public class PaymentConfig {
             ProductRepositoryPort productRepositoryPort,
             PaymentRepositoryPort paymentRepositoryPort,
             PaymentStrategyPort paymentStrategyPort,
+            GetAccountPort getAccountPort,
+            DebitAccountPort debitAccountPort,
             @Value("${payment.fx.eur-to-usd:1.10}") BigDecimal eurToUsdRate
     ) {
-        return new PaymentService(productRepositoryPort, paymentRepositoryPort, paymentStrategyPort, eurToUsdRate);
+        return new PaymentService(
+                productRepositoryPort,
+                paymentRepositoryPort,
+                paymentStrategyPort,
+                getAccountPort,
+                debitAccountPort,
+                eurToUsdRate
+        );
     }
 
     @Bean

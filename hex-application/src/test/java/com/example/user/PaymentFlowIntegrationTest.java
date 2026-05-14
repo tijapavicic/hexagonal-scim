@@ -96,6 +96,77 @@ class PaymentFlowIntegrationTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/payments"));
     }
 
+    @Test
+    void topUpThenPayReducesBalance() throws Exception {
+        long accountId = createAccountViaApi(1L, "flow-topup-pay-" + System.nanoTime());
+
+        mockMvc.perform(post("/api/v1/users/1/accounts/{accountId}/topup", accountId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":100.00}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(100.00));
+
+        mockMvc.perform(post("/api/v1/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": 1,
+                                  "accountId": %d,
+                                  "productId": 1,
+                                  "quantity": 1,
+                                  "paymentMethod": "PAYPAL",
+                                  "currency": "EUR"
+                                }
+                                """.formatted(accountId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.totalAmount").value(79.99));
+
+        mockMvc.perform(get("/api/v1/users/1/accounts/{accountId}", accountId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(20.01));
+    }
+
+    @Test
+    void insufficientFundsReturns422AndBalanceUnchanged() throws Exception {
+        long accountId = createAccountViaApi(1L, "flow-insufficient-" + System.nanoTime());
+
+        mockMvc.perform(post("/api/v1/users/1/accounts/{accountId}/topup", accountId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":10.00}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(10.00));
+
+        mockMvc.perform(post("/api/v1/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": 1,
+                                  "accountId": %d,
+                                  "productId": 1,
+                                  "quantity": 1,
+                                  "paymentMethod": "PAYPAL",
+                                  "currency": "EUR"
+                                }
+                                """.formatted(accountId)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
+
+        mockMvc.perform(get("/api/v1/users/1/accounts/{accountId}", accountId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(10.00));
+    }
+
+    private long createAccountViaApi(Long userId, String name) throws Exception {
+        MvcResult createResult = mockMvc.perform(post("/api/v1/users/{userId}/accounts", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readTree(createResult.getResponse().getContentAsString()).path("id").asLong();
+    }
+
     private Long createFundedAccount(Long userId, String name, java.math.BigDecimal balance) {
         AccountEntity saved = accountJpaRepository.save(new AccountEntity(userId, name, balance));
         return saved.getId();

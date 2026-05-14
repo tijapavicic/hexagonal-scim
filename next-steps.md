@@ -125,10 +125,10 @@ POST /api/v1/payments
 - [x] Return updated `AccountResponse` (include `balance` field)
 
 #### Step G — tests
-- [ ] Unit: `PaymentService` — insufficient funds → 422, exact deduction amount, failed payment leaves balance intact
-- [ ] Unit: `AccountService` — top-up happy path, top-up negative amount rejected
-- [ ] Integration: full flow — top up account → initiate payment → verify balance reduced
-- [ ] Integration: insufficient funds → 422, balance unchanged
+- [x] Unit: `PaymentService` — insufficient funds → 422, exact deduction amount, failed payment leaves balance intact
+- [x] Unit: `AccountService` — top-up happy path, top-up negative amount rejected
+- [x] Integration: full flow — top up account → initiate payment → verify balance reduced
+- [x] Integration: insufficient funds → 422, balance unchanged
 
 #### Step H — docs & verification
 - [ ] Update `README.md` with top-up and payment-with-account curl examples

@@ -447,6 +447,7 @@ The repository enforces a strict hexagonal dependency direction: dependencies po
 - `POST   /api/v1/users/{id}/accounts`            — Create account for a user
 - `GET    /api/v1/users/{id}/accounts`            — List accounts for a user
 - `GET    /api/v1/users/{id}/accounts/{accountId}`— Get account by ID for a user
+- `POST   /api/v1/users/{id}/accounts/{accountId}/topup` — Top up account balance (requires `ROLE_ADMIN`)
 - `DELETE /api/v1/users/{id}/accounts/{accountId}`— Delete account for a user
 - `PUT    /api/v1/users/{id}`   — Full replacement — both `email` and `displayName` required
 - `PATCH  /api/v1/users/{id}`   — Partial update — at least one of `email` or `displayName`
@@ -838,6 +839,24 @@ ACCOUNT_ID=$(curl -s -X POST http://localhost:8080/api/v1/users/1/accounts \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Primary"}' | jq -r .id)
+
+# Get an admin token (top-up requires ROLE_ADMIN)
+ADMIN_TOKEN=$(curl -sk -X POST \
+  https://localhost:8443/realms/hexagonal-scim/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=hexagonal-scim-public&username=adminuser&password=password" \
+  | jq -r .access_token)
+
+# Top up account balance
+curl -i -X POST http://localhost:8080/api/v1/users/1/accounts/$ACCOUNT_ID/topup \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{"amount":100.00}'
+
+# Initiate payment using userId + accountId
+curl -i -X POST http://localhost:8080/api/v1/payments \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"userId":1,"accountId":'"$ACCOUNT_ID"',"productId":1,"quantity":1,"paymentMethod":"PAYPAL","currency":"EUR"}'
 
 # List accounts for user 1
 curl -i http://localhost:8080/api/v1/users/1/accounts -H "Authorization: Bearer $TOKEN"

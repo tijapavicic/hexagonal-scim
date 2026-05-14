@@ -37,6 +37,9 @@ Authentication and authorisation are handled in two layers:
 
 > There is no custom role configuration for account endpoints specifically — the same policy that protects `/api/v1/users/**` also protects `/api/v1/users/{userId}/accounts/**` because `anyRequest().authenticated()` + the interceptor applies to all `/api/**` paths.
 
+Explicit rule callout:
+- `POST /api/v1/users/{userId}/accounts/{accountId}/topup` requires `ROLE_ADMIN`.
+
 ### Public endpoints (no token required)
 
 ```

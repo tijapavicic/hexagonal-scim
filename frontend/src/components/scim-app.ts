@@ -1,7 +1,17 @@
-import { disposeAuthRefresh, getKeycloak, initAuth } from '../auth/keycloak';
+import {
+  disposeAuthRefresh,
+  getAuthProfile,
+  initAuth,
+  login,
+  logout,
+  onAuthEvent,
+  type AuthErrorDetails,
+} from '../auth/keycloak';
 
 class ScimAppElement extends HTMLElement {
   private bound = false;
+  private unsubscribeEvents: Array<() => void> = [];
+  private authError: AuthErrorDetails | null = null;
 
   connectedCallback(): void {
     if (this.bound) {
@@ -9,12 +19,44 @@ class ScimAppElement extends HTMLElement {
     }
 
     this.bound = true;
+    this.bindAuthLifecycleEvents();
     this.renderLoading();
     void this.bootstrap();
   }
 
   disconnectedCallback(): void {
+    this.unsubscribeEvents.forEach((unsubscribe) => unsubscribe());
+    this.unsubscribeEvents = [];
     disposeAuthRefresh();
+  }
+
+  private bindAuthLifecycleEvents(): void {
+    this.unsubscribeEvents.push(
+      onAuthEvent('onAuthSuccess', () => {
+        this.authError = null;
+        this.renderAuthenticated();
+        this.bindActions();
+      }),
+      onAuthEvent('onTokenExpired', () => {
+        // Keep the UI responsive while token refresh is attempted in the auth module.
+      }),
+      onAuthEvent('onAuthLogout', () => {
+        this.authError = {
+          reason: 'session_timeout',
+          message: 'Session timed out. Please sign in again.',
+        };
+        this.renderError();
+        this.bindActions();
+      }),
+      onAuthEvent('onAuthError', (error) => {
+        this.authError = error ?? {
+          reason: 'unknown',
+          message: 'Authentication failed unexpectedly.',
+        };
+        this.renderError();
+        this.bindActions();
+      }),
+    );
   }
 
   private async bootstrap(): Promise<void> {
@@ -22,25 +64,62 @@ class ScimAppElement extends HTMLElement {
       const authenticated = await initAuth();
 
       if (!authenticated) {
-        this.renderError('Authentication was not completed.');
+        this.authError = {
+          reason: 'session_timeout',
+          message: 'Session timed out. Please sign in again.',
+        };
+        this.renderError();
+        this.bindActions();
         return;
       }
 
+      this.authError = null;
       this.renderAuthenticated();
-      this.bindEvents();
+      this.bindActions();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unexpected error';
-      this.renderError(`Unable to initialize login: ${message}`);
+      this.authError =
+        typeof error === 'object' && error !== null && 'reason' in error && 'message' in error
+          ? (error as AuthErrorDetails)
+          : {
+              reason: 'unknown',
+              message: error instanceof Error ? error.message : 'Authentication failed unexpectedly.',
+            };
+      this.renderError();
+      this.bindActions();
     }
   }
 
-  private bindEvents(): void {
-    const keycloak = getKeycloak();
+  private bindActions(): void {
     const logoutButton = this.querySelector<HTMLButtonElement>('[data-action="logout"]');
+    const retryButton = this.querySelector<HTMLButtonElement>('[data-action="retry-login"]');
 
     logoutButton?.addEventListener('click', () => {
-      keycloak.logout({ redirectUri: window.location.origin });
+      void logout();
     });
+
+    retryButton?.addEventListener('click', () => {
+      void login();
+    });
+  }
+
+  private errorCopy(error: AuthErrorDetails | null): string {
+    if (!error) {
+      return 'Authentication failed unexpectedly.';
+    }
+
+    if (error.reason === 'keycloak_unreachable') {
+      return 'Keycloak is unreachable. Verify https://localhost:8443 and local certificates.';
+    }
+
+    if (error.reason === 'invalid_client_or_redirect') {
+      return 'Invalid client or redirect URI configuration. Verify Keycloak client settings.';
+    }
+
+    if (error.reason === 'session_timeout') {
+      return 'Session timed out. Sign in again to continue.';
+    }
+
+    return error.message;
   }
 
   private renderLoading(): void {
@@ -53,15 +132,20 @@ class ScimAppElement extends HTMLElement {
   }
 
   private renderAuthenticated(): void {
-    const keycloak = getKeycloak();
-    const username = (keycloak.tokenParsed?.preferred_username as string | undefined) ?? 'authenticated user';
+    const profile = getAuthProfile();
+    const roles = profile.realmRoles.length > 0 ? profile.realmRoles.join(', ') : 'none';
+    const tokenExpiry = profile.tokenExpiresAt ?? 'unknown';
 
     this.innerHTML = `
       <main style="font-family: system-ui, sans-serif; max-width: 720px; margin: 48px auto; padding: 0 16px;">
         <h1 style="margin-bottom: 8px;">Hexagonal SCIM</h1>
         <p style="margin-top: 0; color: #111827;">
-          Signed in as <strong>${username}</strong>
+          Signed in as <strong>${profile.preferredUsername}</strong>
         </p>
+        <section style="margin: 16px 0; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+          <p style="margin: 4px 0;"><strong>Realm roles:</strong> ${roles}</p>
+          <p style="margin: 4px 0;"><strong>Token expires at:</strong> ${tokenExpiry}</p>
+        </section>
         <p style="margin-top: 0; color: #4b5563;">
           First milestone is complete: browser login redirect to local Keycloak works.
         </p>
@@ -76,11 +160,18 @@ class ScimAppElement extends HTMLElement {
     `;
   }
 
-  private renderError(message: string): void {
+  private renderError(): void {
     this.innerHTML = `
       <main style="font-family: system-ui, sans-serif; max-width: 720px; margin: 48px auto; padding: 0 16px;">
         <h1 style="margin-bottom: 8px;">Hexagonal SCIM</h1>
-        <p style="margin-top: 0; color: #b91c1c;">${message}</p>
+        <p style="margin-top: 0; color: #b91c1c;">${this.errorCopy(this.authError)}</p>
+        <button
+          type="button"
+          data-action="retry-login"
+          style="padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 8px; background: #ffffff; cursor: pointer;"
+        >
+          Sign in again
+        </button>
       </main>
     `;
   }

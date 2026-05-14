@@ -15,13 +15,15 @@ Progress from login-only UI to a production-ready frontend that can securely cal
 
 ## Phase 1 - Auth Stabilization (Now)
 
-- [ ] Add token lifecycle events (`onAuthSuccess`, `onTokenExpired`, `onAuthLogout`, `onAuthError`) in `frontend/src/auth/keycloak.ts`.
-- [ ] Improve user-facing error states in `frontend/src/components/scim-app.ts` for:
-  - [ ] Keycloak unreachable
-  - [ ] Invalid redirect/client config
-  - [ ] Session timeout
-- [ ] Add a small profile panel showing `preferred_username`, realm roles, and token expiry timestamp.
+- [x] Add token lifecycle events (`onAuthSuccess`, `onTokenExpired`, `onAuthLogout`, `onAuthError`) in `frontend/src/auth/keycloak.ts`.
+- [x] Improve user-facing error states in `frontend/src/components/scim-app.ts` for:
+  - [x] Keycloak unreachable
+  - [x] Invalid redirect/client config
+  - [x] Session timeout
+- [x] Add a small profile panel showing `preferred_username`, realm roles, and token expiry timestamp.
 - [ ] Keep logout redirect deterministic (`window.location.origin`) and verify behavior in both Vite dev and Docker Nginx runtime.
+  - Vite dev runtime check passed (`http://127.0.0.1:3000` returned `HTTP/1.1 200 OK`).
+  - Docker runtime verification is pending because Docker daemon was not available locally during this check.
 
 ## Phase 2 - Backend API Integration
 

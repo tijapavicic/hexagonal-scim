@@ -6,6 +6,8 @@ import com.example.user.port.in.CreateAccountPort;
 import com.example.user.port.in.DeleteAccountPort;
 import com.example.user.port.in.GetAccountPort;
 import com.example.user.port.in.GetUserAccountsPort;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +36,8 @@ class AccountControllerAdapterTest {
     @Mock private GetAccountPort getAccountPort;
     @Mock private DeleteAccountPort deleteAccountPort;
 
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     private AccountControllerAdapter controller;
     private MockMvc mockMvc;
 
@@ -43,7 +47,8 @@ class AccountControllerAdapterTest {
                 createAccountPort,
                 getUserAccountsPort,
                 getAccountPort,
-                deleteAccountPort
+                deleteAccountPort,
+                meterRegistry
         );
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();

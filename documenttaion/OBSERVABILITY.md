@@ -19,11 +19,13 @@
 9. [Grafana Dashboard Guide](#9-grafana-dashboard-guide)
 10. [Splunk Log Search Guide](#10-splunk-log-search-guide)
 11. [Prometheus Query Reference](#11-prometheus-query-reference)
-12. [File Reference](#12-file-reference)
-13. [Extending the Stack](#13-extending-the-stack)
-14. [Production Checklist](#14-production-checklist)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Glossary](#16-glossary)
+12. [Prometheus Alerting Rules](#12-prometheus-alerting-rules)
+13. [Account Operations Metrics](#13-account-operations-metrics)
+14. [File Reference](#14-file-reference)
+15. [Extending the Stack](#15-extending-the-stack)
+16. [Production Checklist](#16-production-checklist)
+17. [Troubleshooting](#17-troubleshooting)
+18. [Glossary](#18-glossary)
 
 ---
 
@@ -535,19 +537,112 @@ sum(jvm_memory_max_bytes{application="hexagonal-scim",area="heap"})
 
 process_cpu_usage{application="hexagonal-scim"}
 jvm_threads_live_threads{application="hexagonal-scim"}
+
+# ─── Account operations ───────────────────────────────────────────────────────
+
+# Rate of account operations per second by type
+sum(rate(account_operations_total{application="hexagonal-scim"}[2m])) by (operation)
+
+# Total cumulative account operations
+sum(account_operations_total{application="hexagonal-scim"}) by (operation)
 ```
 
 ---
 
-## 12. File Reference
+## 12. Prometheus Alerting Rules
+
+Alerting rules are defined in `docker/prometheus/rules/app-alerts.yml` and loaded by Prometheus at startup.
+
+### Enabled rules
+
+| Alert | Condition | Severity | Fire after |
+|---|---|---|---|
+| `HighServerErrorRate` | 5xx rate > 5% (5m window) | **critical** | 2 min |
+| `HighClientErrorRate` | 4xx rate > 20% (5m window) | warning | 5 min |
+| `HighP95Latency` | P95 latency > 1 s | warning | 5 min |
+| `AppDown` | No HTTP metrics scraped | **critical** | 1 min |
+| `HighJvmHeapUsage` | Heap used > 90% | warning | 5 min |
+| `CriticalJvmHeapUsage` | Heap used > 95% | **critical** | 2 min |
+| `HighGcPressure` | GC time > 100 ms/s | warning | 5 min |
+| `AccountOperationsStalled` | Zero account ops for 15 min | info | 15 min |
+
+### View firing alerts
+
+Open `http://localhost:9090/alerts` in the Prometheus UI. Alerts move from `PENDING` to `FIRING` once the `for:` duration is exceeded.
+
+### Connect Prometheus AlertManager
+
+To route alerts to Slack / PagerDuty / email, deploy [AlertManager](https://prometheus.io/docs/alerting/latest/alertmanager/) and add to `prometheus.yml`:
+
+```yaml
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+```
+
+---
+
+## 13. Account Operations Metrics
+
+`AccountControllerAdapter` emits a Micrometer **Counter** for every successful API call.
+
+### Metric details
+
+| Property | Value |
+|---|---|
+| Metric name (Micrometer) | `account.operations` |
+| Metric name (Prometheus) | `account_operations_total` |
+| Type | Counter |
+| Tags | `operation` (create / get-all / get-by-id / delete), `application` (hexagonal-scim) |
+
+### Example Prometheus output
+
+```
+# HELP account_operations_total
+# TYPE account_operations_total counter
+account_operations_total{application="hexagonal-scim",operation="create"} 42.0
+account_operations_total{application="hexagonal-scim",operation="get-all"} 157.0
+account_operations_total{application="hexagonal-scim",operation="get-by-id"} 83.0
+account_operations_total{application="hexagonal-scim",operation="delete"} 19.0
+```
+
+### Grafana panels (Row 6)
+
+Two panels were added to the **Hexagonal SCIM — Spring Boot 3 / JVM** dashboard:
+
+| Panel | Type | Query |
+|---|---|---|
+| **Account Operations Rate** | Time series | `sum(rate(account_operations_total[2m])) by (operation)` |
+| **Total Account Operations** | Stat | `sum(account_operations_total) by (operation)` |
+
+### PromQL queries
+
+```promql
+# Rate per second — see which operations are called most
+sum(rate(account_operations_total{application="hexagonal-scim"}[2m])) by (operation)
+
+# Cumulative totals
+sum(account_operations_total{application="hexagonal-scim"}) by (operation)
+
+# Only create operations
+rate(account_operations_total{application="hexagonal-scim",operation="create"}[5m])
+```
+
+---
+
+## 14. File Reference
 
 | File | Purpose |
 |---|---|
 | `hex-application/pom.xml` | Adds `micrometer-registry-prometheus` + `logstash-logback-encoder` |
+| `hex-inbound-adapter-web/pom.xml` | Adds `micrometer-core` for `MeterRegistry` injection in adapters |
 | `hex-application/src/main/resources/application.yml` | Exposes `/actuator/prometheus`, enables histograms |
 | `hex-application/src/main/resources/application-docker.yml` | Same for docker profile + `environment=docker` metric tag |
 | `hex-application/src/main/resources/logback-spring.xml` | Profile-aware Logback: plain text locally, JSON file in docker |
+| `hex-inbound-adapter-web/src/main/java/.../api/AccountControllerAdapter.java` | Emits `account.operations` Micrometer counter per API call |
 | `docker/prometheus/prometheus.yml` | Prometheus scrape config — scrapes `app:8080/actuator/prometheus` |
+| `docker/prometheus/rules/app-alerts.yml` | Prometheus alerting rules (HTTP errors, JVM heap, latency, account ops) |
 | `docker/grafana/provisioning/datasources/prometheus.yml` | Auto-provisions Prometheus datasource in Grafana |
 | `docker/grafana/provisioning/dashboards/dashboards.yml` | Tells Grafana where to find dashboard JSON files |
 | `docker/grafana/dashboards/hexagonal-scim.json` | Custom Spring Boot 3 / JVM Grafana dashboard |
@@ -559,7 +654,7 @@ jvm_threads_live_threads{application="hexagonal-scim"}
 
 ---
 
-## 13. Extending the Stack
+## 15. Extending the Stack
 
 ### Add a custom metric to Spring Boot
 
@@ -657,7 +752,7 @@ Uncomment `KC_METRICS_ENABLED: "true"` in `docker-compose.yml` and uncomment the
 
 ---
 
-## 14. Production Checklist
+## 16. Production Checklist
 
 ### Security
 
@@ -688,7 +783,7 @@ Uncomment `KC_METRICS_ENABLED: "true"` in `docker-compose.yml` and uncomment the
 
 ---
 
-## 15. Troubleshooting
+## 17. Troubleshooting
 
 ### Prometheus shows `app` target as DOWN
 
@@ -753,7 +848,7 @@ docker exec hexagonal-scim-app tail -1 /app/logs/app.log | python3 -m json.tool
 
 ---
 
-## 16. Glossary
+## 18. Glossary
 
 | Term | Definition |
 |---|---|

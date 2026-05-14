@@ -1,375 +1,859 @@
 {
   "id": null,
   "uid": "hexscim-springboot3",
-  "title": "Hexagonal SCIM — Spring Boot 3 / JVM",
-  "description": "HTTP throughput, latency percentiles, JVM heap, CPU, threads and GC — powered by Micrometer + Prometheus",
-  "tags": ["spring-boot", "jvm", "hexagonal-scim", "micrometer"],
+  "title": "Hexagonal SCIM \u2014 Spring Boot 3 / JVM",
+  "description": "HTTP throughput, latency percentiles, JVM heap, CPU, threads and GC \u2014 powered by Micrometer + Prometheus",
+  "tags": [
+    "spring-boot",
+    "jvm",
+    "hexagonal-scim",
+    "micrometer"
+  ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
-  "time": { "from": "now-1h", "to": "now" },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "timepicker": {},
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "panels": [
-
-    // ── Row 1: Summary stats ────────────────────────────────────────────────
     {
       "id": 1,
       "type": "stat",
       "title": "Request Rate",
       "description": "Total HTTP requests per second across all endpoints",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "red", "value": 200 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 200
+              }
             ]
           },
           "mappings": []
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area" },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area"
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(rate(http_server_requests_seconds_count{application=\"hexagonal-scim\"}[2m]))",
           "legendFormat": "req/s",
           "refId": "A"
         }
       ]
     },
-
     {
       "id": 2,
       "type": "stat",
       "title": "Error Rate (5xx)",
       "description": "Percentage of requests resulting in 5xx server errors",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "red", "value": 0.05 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
             ]
           },
           "mappings": []
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto", "textMode": "auto" },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(rate(http_server_requests_seconds_count{application=\"hexagonal-scim\",outcome=\"SERVER_ERROR\"}[2m])) / sum(rate(http_server_requests_seconds_count{application=\"hexagonal-scim\"}[2m]))",
           "legendFormat": "error %",
           "refId": "A"
         }
       ]
     },
-
     {
       "id": 3,
       "type": "stat",
       "title": "P95 Latency",
       "description": "95th percentile HTTP response time",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.5 },
-              { "color": "red", "value": 1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
             ]
           },
           "mappings": []
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto", "textMode": "auto" },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"hexagonal-scim\"}[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "A"
         }
       ]
     },
-
     {
       "id": 4,
       "type": "stat",
       "title": "JVM Heap Usage",
       "description": "Current heap used vs maximum heap",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "min": 0,
           "max": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.7 },
-              { "color": "red", "value": 0.9 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
             ]
           },
           "mappings": []
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto", "textMode": "auto" },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(jvm_memory_used_bytes{application=\"hexagonal-scim\",area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"hexagonal-scim\",area=\"heap\"})",
           "legendFormat": "heap %",
           "refId": "A"
         }
       ]
     },
-
-    // ── Row 2: HTTP throughput + latency ────────────────────────────────────
     {
       "id": 5,
       "type": "timeseries",
       "title": "HTTP Request Rate by Status",
       "description": "Requests per second grouped by HTTP status outcome (SUCCESS, CLIENT_ERROR, SERVER_ERROR)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "SERVER_ERROR" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "CLIENT_ERROR" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "SUCCESS" },      "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SERVER_ERROR"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CLIENT_ERROR"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SUCCESS"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
         ]
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(rate(http_server_requests_seconds_count{application=\"hexagonal-scim\"}[2m])) by (outcome)",
           "legendFormat": "{{outcome}}",
           "refId": "A"
         }
       ]
     },
-
     {
       "id": 6,
       "type": "timeseries",
       "title": "HTTP Latency Percentiles",
-      "description": "P50, P95, P99 response time — requires histogram buckets (percentiles-histogram: true)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "description": "P50, P95, P99 response time \u2014 requires histogram buckets (percentiles-histogram: true)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "custom": { "lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         }
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{application=\"hexagonal-scim\"}[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"hexagonal-scim\"}[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"hexagonal-scim\"}[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "C"
         }
       ]
     },
-
-    // ── Row 3: JVM memory + CPU ─────────────────────────────────────────────
     {
       "id": 7,
       "type": "timeseries",
-      "title": "JVM Memory — Heap",
+      "title": "JVM Memory \u2014 Heap",
       "description": "Heap used vs committed vs max. When used approaches max, expect GC pressure or OutOfMemoryError.",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "custom": { "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         }
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(jvm_memory_used_bytes{application=\"hexagonal-scim\",area=\"heap\"})",
           "legendFormat": "Heap Used",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(jvm_memory_committed_bytes{application=\"hexagonal-scim\",area=\"heap\"})",
           "legendFormat": "Heap Committed",
           "refId": "B"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(jvm_memory_max_bytes{application=\"hexagonal-scim\",area=\"heap\"})",
           "legendFormat": "Heap Max",
           "refId": "C"
         }
       ]
     },
-
     {
       "id": 8,
       "type": "timeseries",
       "title": "CPU Usage",
       "description": "Process CPU (JVM) vs system-wide CPU. High process CPU with low system CPU = computation-bound JVM.",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
           "min": 0,
           "max": 1,
-          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         }
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "process_cpu_usage{application=\"hexagonal-scim\"}",
           "legendFormat": "JVM Process CPU",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "system_cpu_usage{application=\"hexagonal-scim\"}",
           "legendFormat": "System CPU",
           "refId": "B"
         }
       ]
     },
-
-    // ── Row 4: Threads + GC ─────────────────────────────────────────────────
     {
       "id": 9,
       "type": "timeseries",
       "title": "JVM Threads",
       "description": "Live, daemon, and peak thread counts. Sudden drops = crashes. Steady growth = thread leak.",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "lineWidth": 2, "fillOpacity": 8, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         }
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "jvm_threads_live_threads{application=\"hexagonal-scim\"}",
           "legendFormat": "Live Threads",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "jvm_threads_daemon_threads{application=\"hexagonal-scim\"}",
           "legendFormat": "Daemon Threads",
           "refId": "B"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "jvm_threads_peak_threads{application=\"hexagonal-scim\"}",
           "legendFormat": "Peak Threads",
           "refId": "C"
         }
       ]
     },
-
     {
       "id": 10,
       "type": "timeseries",
       "title": "GC Pause Duration",
       "description": "Time spent in garbage collection per second. Sustained GC above 100ms/s indicates heap pressure.",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         }
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(rate(jvm_gc_pause_seconds_sum{application=\"hexagonal-scim\"}[1m])) by (action, cause)",
           "legendFormat": "{{action}} / {{cause}}",
           "refId": "A"
         }
       ]
     },
-
-    // ── Row 5: HTTP by endpoint ─────────────────────────────────────────────
     {
       "id": 11,
       "type": "timeseries",
       "title": "HTTP Request Rate by URI",
-      "description": "Per-endpoint request rate — identify hot paths",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
-      "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+      "description": "Per-endpoint request rate \u2014 identify hot paths",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "custom": { "lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true }
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true
+          }
         }
       },
-      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right" }, "tooltip": { "mode": "multi" } },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus-hexagonal-scim" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
           "expr": "sum(rate(http_server_requests_seconds_count{application=\"hexagonal-scim\"}[2m])) by (method, uri, status)",
-          "legendFormat": "{{method}} {{uri}} → {{status}}",
+          "legendFormat": "{{method}} {{uri}} \u2192 {{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Account Operations Rate",
+      "description": "Account API call rate per second by operation type (create / get / delete). Powered by the account.operations Micrometer Counter.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
+          "expr": "sum(rate(account_operations_total{application=\"hexagonal-scim\"}[2m])) by (operation)",
+          "legendFormat": "{{operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Total Account Operations",
+      "description": "Cumulative account API operation counts by type since last app restart.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-hexagonal-scim"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-hexagonal-scim"
+          },
+          "expr": "sum(account_operations_total{application=\"hexagonal-scim\"}) by (operation)",
+          "legendFormat": "{{operation}}",
           "refId": "A"
         }
       ]
     }
-
   ]
 }
-

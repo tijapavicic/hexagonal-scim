@@ -32,6 +32,7 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     expose:
       - "9090"        # Internal only — no host binding in staging

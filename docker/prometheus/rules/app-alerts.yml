@@ -1,0 +1,129 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Prometheus alerting rules — hexagonal-scim
+#
+# Loaded by prometheus.yml via rule_files.
+# Evaluate every 15s (matches global.evaluation_interval).
+#
+# How to enable:
+#   Uncomment the rule_files block in docker/prometheus/prometheus.yml
+#   and mount this directory into the Prometheus container.
+# ──────────────────────────────────────────────────────────────────────────────
+
+groups:
+
+  # ── HTTP health ─────────────────────────────────────────────────────────────
+  - name: hexagonal-scim-http
+    rules:
+
+      - alert: HighServerErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="hexagonal-scim",outcome="SERVER_ERROR"}[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count{application="hexagonal-scim"}[5m]))
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: hexagonal-scim
+        annotations:
+          summary: "High 5xx error rate (> 5%)"
+          description: "5xx error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          runbook: "Check application logs: docker logs hexagonal-scim-app --tail=100"
+
+      - alert: HighClientErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="hexagonal-scim",outcome="CLIENT_ERROR"}[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count{application="hexagonal-scim"}[5m]))
+          > 0.20
+        for: 5m
+        labels:
+          severity: warning
+          service: hexagonal-scim
+        annotations:
+          summary: "High 4xx error rate (> 20%)"
+          description: "4xx error rate is {{ $value | humanizePercentage }}. Could indicate bad clients or API contract issues."
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_server_requests_seconds_bucket{application="hexagonal-scim"}[5m])) by (le)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          service: hexagonal-scim
+        annotations:
+          summary: "P95 HTTP latency above 1 second"
+          description: "P95 latency is {{ $value | humanizeDuration }}. SLO target is 500ms."
+
+      - alert: AppDown
+        expr: |
+          absent(http_server_requests_seconds_count{application="hexagonal-scim"})
+        for: 1m
+        labels:
+          severity: critical
+          service: hexagonal-scim
+        annotations:
+          summary: "hexagonal-scim is not responding"
+          description: "No HTTP metrics have been scraped for 1 minute. The app may be down."
+
+  # ── JVM health ──────────────────────────────────────────────────────────────
+  - name: hexagonal-scim-jvm
+    rules:
+
+      - alert: HighJvmHeapUsage
+        expr: |
+          sum(jvm_memory_used_bytes{application="hexagonal-scim",area="heap"})
+          /
+          sum(jvm_memory_max_bytes{application="hexagonal-scim",area="heap"})
+          > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          service: hexagonal-scim
+        annotations:
+          summary: "JVM heap usage above 90%"
+          description: "Heap usage is {{ $value | humanizePercentage }}. Risk of OutOfMemoryError if sustained."
+
+      - alert: CriticalJvmHeapUsage
+        expr: |
+          sum(jvm_memory_used_bytes{application="hexagonal-scim",area="heap"})
+          /
+          sum(jvm_memory_max_bytes{application="hexagonal-scim",area="heap"})
+          > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          service: hexagonal-scim
+        annotations:
+          summary: "JVM heap usage critical (> 95%)"
+          description: "Heap usage is {{ $value | humanizePercentage }}. OutOfMemoryError is imminent."
+
+      - alert: HighGcPressure
+        expr: |
+          sum(rate(jvm_gc_pause_seconds_sum{application="hexagonal-scim"}[1m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: hexagonal-scim
+        annotations:
+          summary: "Sustained GC pressure (> 100ms/s)"
+          description: "GC is consuming {{ $value | humanizeDuration }}/s of CPU. Tune heap or reduce allocation rate."
+
+  # ── Account operations ──────────────────────────────────────────────────────
+  - name: hexagonal-scim-business
+    rules:
+
+      - alert: AccountOperationsStalled
+        expr: |
+          sum(rate(account_operations_total{application="hexagonal-scim"}[10m])) == 0
+        for: 15m
+        labels:
+          severity: info
+          service: hexagonal-scim
+        annotations:
+          summary: "No account operations in the last 15 minutes"
+          description: "No create/get/delete account calls observed. Expected in production unless the service is inactive."
+

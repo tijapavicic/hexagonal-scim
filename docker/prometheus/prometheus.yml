@@ -20,10 +20,10 @@ global:
     environment: 'docker'
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Alerting rules (file-based, kept here for future use)
+# Alerting rules
 # ──────────────────────────────────────────────────────────────────────────────
-# rule_files:
-#   - /etc/prometheus/rules/*.yml
+rule_files:
+  - /etc/prometheus/rules/*.yml
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Scrape jobs

@@ -40,6 +40,8 @@ public class PaymentControllerAdapter {
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest request) {
         Payment payment = initiatePaymentPort.initiate(
+                request.userId(),
+                request.accountId(),
                 request.productId(),
                 request.quantity(),
                 request.paymentMethod(),
@@ -61,6 +63,8 @@ public class PaymentControllerAdapter {
     private PaymentResponse toResponse(Payment payment) {
         return new PaymentResponse(
                 payment.id(),
+                payment.userId(),
+                payment.accountId(),
                 payment.productId(),
                 payment.quantity(),
                 payment.totalAmount(),

@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreatePaymentRequest(
+        @NotNull Long userId,
+        @NotNull Long accountId,
         @NotNull Long productId,
         @Min(1) int quantity,
         @NotNull PaymentMethod paymentMethod,

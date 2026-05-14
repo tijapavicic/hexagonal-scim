@@ -2,6 +2,7 @@ package com.example.user.api.payment;
 
 import com.example.user.api.payment.dto.ErrorResponse;
 import com.example.user.core.DuplicateProductException;
+import com.example.user.core.InsufficientFundsException;
 import com.example.user.core.InsufficientStockException;
 import com.example.user.core.PaymentNotFoundException;
 import com.example.user.core.PaymentProcessingException;
@@ -36,6 +37,12 @@ public class PaymentApiExceptionHandler {
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ErrorResponse handleInsufficientStock(InsufficientStockException ex, HttpServletRequest req) {
         return new ErrorResponse("INSUFFICIENT_STOCK", ex.getMessage(), req.getRequestURI());
+    }
+
+    @ExceptionHandler(InsufficientFundsException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ErrorResponse handleInsufficientFunds(InsufficientFundsException ex, HttpServletRequest req) {
+        return new ErrorResponse("INSUFFICIENT_FUNDS", ex.getMessage(), req.getRequestURI());
     }
 
     @ExceptionHandler(PaymentNotFoundException.class)

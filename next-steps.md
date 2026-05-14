@@ -112,10 +112,10 @@ POST /api/v1/payments
 - [x] Update `PaymentServiceTest` for new cases: insufficient funds, successful deduction, failed payment leaves balance unchanged
 
 #### Step E — `hex-inbound-adapter-payment-web`: update request/response DTOs
-- [ ] Add `userId` + `accountId` to `CreatePaymentRequest` (with `@NotNull` validation)
-- [ ] Add `userId` + `accountId` to `PaymentResponse`
-- [ ] Update `PaymentControllerAdapter` to pass new fields
-- [ ] Add `InsufficientFundsException` → 422 handler to `PaymentApiExceptionHandler`
+- [x] Add `userId` + `accountId` to `CreatePaymentRequest` (with `@NotNull` validation)
+- [x] Add `userId` + `accountId` to `PaymentResponse`
+- [x] Update `PaymentControllerAdapter` to pass new fields
+- [x] Add `InsufficientFundsException` → 422 handler to `PaymentApiExceptionHandler`
 
 #### Step F — `hex-inbound-adapter-web`: add top-up endpoint
 - [ ] `POST /api/v1/users/{userId}/accounts/{accountId}/topup` with body `{ "amount": 100.00 }`

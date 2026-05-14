@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 
 public record PaymentResponse(
         Long id,
+        Long userId,
+        Long accountId,
         Long productId,
         int quantity,
         BigDecimal totalAmount,

@@ -15,15 +15,19 @@ Deliver secure, testable, observable, and maintainable changes that respect this
 ## Repository Guardrails (Mandatory)
 
 1. Respect module boundaries and existing architecture:
-   - `avro-model`
-   - `sim-engine-backend`
-   - `calculation-engine`
-   - `simulation-engine`
-   - root Spring Boot app under `src/`
+   - `hex-core`
+   - `hex-payment-core`
+   - `hex-inbound-adapter-web`
+   - `hex-inbound-adapter-payment-web`
+   - `hex-outbound-adapter-db`
+   - `hex-outbound-adapter-payment-db`
+   - `hex-application`
+   - frontend assets under `frontend/`
+   - root app/docs/orchestration files under repository root and `docker/`
 2. Keep Java code under `com.example.user`.
-3. Keep controllers in `api`, config in `config`, and Avro models in `model`.
-4. Never manually edit generated sources under `target/generated-sources/avro`.
-5. If `src/main/avro/user_event.avsc` changes, regenerate sources with Maven.
+3. Keep controllers in `api`, config in `config`, and domain models in `model`.
+4. Keep adapters hexagonal: inbound adapters call `port.in`; outbound adapters implement `port.out`.
+5. Do not edit generated output under `target/`; change source files only.
 6. Prefer small, focused diffs; avoid unrelated refactors.
 
 ## Quality Gates

@@ -45,14 +45,113 @@ cd /Users/copor/IdeaProjects/hexagonal-scim
 mvn -B org.owasp:dependency-check-maven:check
 ```
 
-## 5) Release Readiness
+## 5) Account Balance & Payment Deduction
+
+> **Goal:** Users have accounts with a balance. When a payment is initiated, the total amount is
+> deducted from the specified account. If the account has insufficient funds, the payment is rejected
+> before it ever reaches the payment gateway.
+
+### How it fits together (architecture)
+
+```
+POST /api/v1/payments
+  { userId, accountId, productId, quantity, paymentMethod, currency }
+        │
+        ▼
+  PaymentControllerAdapter
+        │
+        ▼
+  InitiatePaymentPort.initiate(userId, accountId, productId, quantity, ...)
+        │
+        ▼
+  PaymentService
+    1. Load product → check stock
+    2. Calculate totalAmount
+    3. Load account via GetAccountPort → check balance >= totalAmount  ← NEW
+    4. Save Payment(PENDING)
+    5. gateway.process(payment)
+    6. On COMPLETED → deduct balance via DebitAccountPort              ← NEW
+                    → decrement stock
+    7. On FAILED    → mark Payment(FAILED), balance unchanged
+        │
+        ▼
+  DebitAccountPort (outbound) → AccountRepositoryAdapter → DB
+```
+
+### New / changed domain exception
+
+| Exception | HTTP | When |
+|-----------|------|------|
+| `InsufficientFundsException` | 422 | Account balance < payment total |
+
+### Step-by-step implementation plan
+
+#### Step A — `hex-core`: add balance to Account + new ports + new exception
+- [x] Add `balance: BigDecimal` field to `Account` record (compact constructor: must be ≥ 0)
+- [x] Add `InsufficientFundsException` domain exception
+- [x] Add outbound port `DebitAccountPort` — `void debit(Long accountId, BigDecimal amount)`
+- [x] Add outbound port `CreditAccountPort` — `void credit(Long accountId, BigDecimal amount)` (for top-up)
+
+#### Step B — `hex-outbound-adapter-db`: balance column + debit/credit implementation
+- [ ] Flyway `V8__add_balance_to_accounts.sql` — `ALTER TABLE accounts ADD COLUMN balance NUMERIC(19,4) NOT NULL DEFAULT 0`
+- [ ] Update `AccountEntity` to include `balance`
+- [ ] Implement `DebitAccountPort` in `AccountRepositoryAdapter` (atomic UPDATE with optimistic lock / check)
+- [ ] Implement `CreditAccountPort` in `AccountRepositoryAdapter`
+
+#### Step C — `hex-outbound-adapter-payment-db`: track userId + accountId on payment
+- [ ] Flyway `V9__add_user_account_to_payments.sql` — add `user_id BIGINT` and `account_id BIGINT` columns to `payments`
+- [ ] Update `PaymentEntity` with new fields
+- [ ] Update `PaymentRepositoryAdapter` mapping
+
+#### Step D — `hex-payment-core`: wire balance check + deduction into PaymentService
+- [ ] Add `userId` and `accountId` to `Payment` record
+- [ ] Update `InitiatePaymentPort.initiate()` signature to accept `userId` and `accountId`
+- [ ] Inject `DebitAccountPort` + `GetAccountPort` into `PaymentService`
+- [ ] Before saving PENDING: load account, check `balance >= totalAmount`, throw `InsufficientFundsException` if not
+- [ ] On COMPLETED: call `debitAccountPort.debit(accountId, totalAmount)`
+- [ ] Update `PaymentServiceTest` for new cases: insufficient funds, successful deduction, failed payment leaves balance unchanged
+
+#### Step E — `hex-inbound-adapter-payment-web`: update request/response DTOs
+- [ ] Add `userId` + `accountId` to `CreatePaymentRequest` (with `@NotNull` validation)
+- [ ] Add `userId` + `accountId` to `PaymentResponse`
+- [ ] Update `PaymentControllerAdapter` to pass new fields
+- [ ] Add `InsufficientFundsException` → 422 handler to `PaymentApiExceptionHandler`
+
+#### Step F — `hex-inbound-adapter-web`: add top-up endpoint
+- [ ] `POST /api/v1/users/{userId}/accounts/{accountId}/topup` with body `{ "amount": 100.00 }`
+- [ ] `TopUpAccountRequest` DTO with `@DecimalMin("0.01")` validation
+- [ ] New inbound port `TopUpAccountPort` in `hex-core`
+- [ ] Implement in `AccountService` / core — delegates to `CreditAccountPort`
+- [ ] Return updated `AccountResponse` (include `balance` field)
+
+#### Step G — tests
+- [ ] Unit: `PaymentService` — insufficient funds → 422, exact deduction amount, failed payment leaves balance intact
+- [ ] Unit: `AccountService` — top-up happy path, top-up negative amount rejected
+- [ ] Integration: full flow — top up account → initiate payment → verify balance reduced
+- [ ] Integration: insufficient funds → 422, balance unchanged
+
+#### Step H — docs & verification
+- [ ] Update `README.md` with top-up and payment-with-account curl examples
+- [ ] Update `security-governance.md` — top-up endpoint requires ROLE_ADMIN
+- [ ] Run `mvn -B clean verify` — all tests green
+- [ ] Run `docker compose up --build` — smoke test full payment flow end to end
+
+### Quick verify command
+```bash
+cd /path/to/hexagonal-scim
+mvn -B clean verify
+```
+
+---
+
+## 6) Release Readiness (original §5)
 
 - [ ] Run smoke checks against a fresh database to validate Flyway `V7` ordering.
 - [ ] Run API regression set (health/products/payments + new account scenarios).
 - [ ] Add release note line for account lifecycle semantics and HTTP error mappings.
 - [ ] Tag and release only after CI, integration checks, and migration verification are green.
 
-## 6) Medium Term (future split criteria)
+## 7) Medium Term — Module Split Criteria (original §6)
 
 Keep Accounts in the same user module path unless one or more split triggers occur:
 

@@ -1,11 +1,12 @@
 package com.example.user.api.config;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.condition.AnyNestedCondition;
-import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,7 +15,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.lang.NonNull;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,36 +55,28 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@Conditional(SecurityConfig.JwtResourceServerPropertiesPresent.class)
+@Conditional(SecurityConfig.SecurityEnabledCondition.class)
 public class SecurityConfig {
 
     /**
-     * Activates this configuration when either issuer-uri or jwk-set-uri is provided.
-     * ConditionalOnProperty handles relaxed binding from env vars reliably.
+     * Activates secured mode when JWT resource-server properties are configured
+     * or when the docker profile is active.
      */
-    static class JwtResourceServerPropertiesPresent extends AnyNestedCondition {
-        JwtResourceServerPropertiesPresent() {
-            super(ConfigurationPhase.REGISTER_BEAN);
+    static class SecurityEnabledCondition implements Condition {
+        @Override
+        public boolean matches(@NonNull ConditionContext context, @NonNull AnnotatedTypeMetadata metadata) {
+            Environment environment = context.getEnvironment();
+            boolean hasIssuer = hasText(environment.getProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri"))
+                    || hasText(environment.getProperty("spring.security.oauth2.resourceserver.jwt.issuer.uri"));
+            boolean hasJwkSet = hasText(environment.getProperty("spring.security.oauth2.resourceserver.jwt.jwk-set-uri"))
+                    || hasText(environment.getProperty("spring.security.oauth2.resourceserver.jwt.jwk.set.uri"));
+            boolean dockerProfileActive = Arrays.stream(environment.getActiveProfiles())
+                    .anyMatch("docker"::equalsIgnoreCase);
+            return hasIssuer || hasJwkSet || dockerProfileActive;
         }
 
-        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.issuer-uri")
-        static class IssuerUriPresent {
-        }
-
-        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.issuer.uri")
-        static class IssuerUriDotPresent {
-        }
-
-        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.jwk-set-uri")
-        static class JwkSetUriPresent {
-        }
-
-        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.jwk.set.uri")
-        static class JwkSetUriDotPresent {
-        }
-
-        @Profile("docker")
-        static class DockerProfileActive {
+        private boolean hasText(String value) {
+            return value != null && !value.isBlank();
         }
     }
 

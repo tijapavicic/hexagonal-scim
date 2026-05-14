@@ -42,9 +42,10 @@ Progress from login-only UI to a production-ready frontend that can securely cal
   - [x] Web Origins are explicit (avoid permissive `*`)
   - [x] Standard Flow enabled, Direct Access Grants disabled unless intentionally needed
     - `hexagonal-scim-public` keeps Direct Access Grants enabled intentionally for local Postman/password-grant workflows.
-- [ ] Verify backend rejects unauthenticated requests and enforces role-based access where expected.
-  - Runtime check currently returns `200` for unauthenticated `GET http://localhost:8080/api/v1/users` in local Docker mode.
-  - This requires a backend follow-up fix before this item can be closed.
+- [x] Verify backend rejects unauthenticated requests and enforces role-based access where expected.
+  - Verified by `ApiSecurityContractIntegrationTest` in `hex-application`:
+    - unauthenticated `GET /api/v1/users` -> `401`
+    - authenticated `ROLE_USER` `POST /api/v1/users` -> `403`
 - [x] Ensure frontend does not log tokens or sensitive payloads.
 - [x] Add a concise troubleshooting section for common local issues (invalid redirect URI, mixed http/https, expired realm/client config).
 

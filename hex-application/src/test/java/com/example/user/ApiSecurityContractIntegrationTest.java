@@ -7,10 +7,8 @@ import org.springframework.boot.test.autoconfigure.actuate.observability.AutoCon
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
-import java.util.Map;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,14 +16,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Security integration checks for protected API behavior in secured mode.
+ * Contract-level security checks for protected API behavior in secured mode.
  */
 @SpringBootTest(properties = {
+        // Activates JWT resource server security chain in test runtime.
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost/mock-jwks"
 })
 @AutoConfigureMockMvc
 @AutoConfigureObservability(tracing = false)
-class ApiSecurityIntegrationTest {
+class ApiSecurityContractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -41,12 +40,12 @@ class ApiSecurityIntegrationTest {
     @DisplayName("POST /api/v1/users returns 403 for authenticated ROLE_USER (non-admin)")
     void createUserWithRoleUserReturnsForbidden() throws Exception {
         mockMvc.perform(post("/api/v1/users")
-                        .with(jwt().jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("user")))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "role-user-test@example.com",
-                                  "displayName": "Role User"
+                                  "email": "role-user-contract@example.com",
+                                  "displayName": "Role User Contract"
                                 }
                                 """))
                 .andExpect(status().isForbidden());

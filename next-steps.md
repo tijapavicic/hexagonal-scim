@@ -99,9 +99,9 @@ POST /api/v1/payments
 - [x] Implement `CreditAccountPort` in `AccountRepositoryAdapter`
 
 #### Step C — `hex-outbound-adapter-payment-db`: track userId + accountId on payment
-- [ ] Flyway `V9__add_user_account_to_payments.sql` — add `user_id BIGINT` and `account_id BIGINT` columns to `payments`
-- [ ] Update `PaymentEntity` with new fields
-- [ ] Update `PaymentRepositoryAdapter` mapping
+- [x] Flyway `V9__add_user_account_to_payments.sql` — add `user_id BIGINT` and `account_id BIGINT` columns to `payments`
+- [x] Update `PaymentEntity` with new fields
+- [x] Update `PaymentRepositoryAdapter` mapping
 
 #### Step D — `hex-payment-core`: wire balance check + deduction into PaymentService
 - [ ] Add `userId` and `accountId` to `Payment` record

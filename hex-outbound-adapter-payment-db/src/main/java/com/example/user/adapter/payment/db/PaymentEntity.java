@@ -23,6 +23,12 @@ public class PaymentEntity {
     @Column(nullable = false)
     private Long productId;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "account_id")
+    private Long accountId;
+
     @Column(nullable = false)
     private int quantity;
 
@@ -45,6 +51,13 @@ public class PaymentEntity {
 
     public PaymentEntity(Long productId, int quantity, BigDecimal totalAmount, String currency,
                          PaymentStatus status, PaymentMethod paymentMethod) {
+        this(null, null, productId, quantity, totalAmount, currency, status, paymentMethod);
+    }
+
+    public PaymentEntity(Long userId, Long accountId, Long productId, int quantity, BigDecimal totalAmount, String currency,
+                         PaymentStatus status, PaymentMethod paymentMethod) {
+        this.userId = userId;
+        this.accountId = accountId;
         this.productId = productId;
         this.quantity = quantity;
         this.totalAmount = totalAmount;
@@ -59,6 +72,22 @@ public class PaymentEntity {
 
     public Long getProductId() {
         return productId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(Long accountId) {
+        this.accountId = accountId;
     }
 
     public void setProductId(Long productId) {

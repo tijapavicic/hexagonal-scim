@@ -19,6 +19,8 @@ public class PaymentRepositoryAdapter implements PaymentRepositoryPort {
         PaymentEntity entity;
         if (payment.id() == null) {
             entity = new PaymentEntity(
+                    payment.userId(),
+                    payment.accountId(),
                     payment.productId(),
                     payment.quantity(),
                     payment.totalAmount(),
@@ -29,6 +31,8 @@ public class PaymentRepositoryAdapter implements PaymentRepositoryPort {
         } else {
             entity = paymentJpaRepository.findById(payment.id())
                     .orElseThrow(() -> new IllegalStateException("Payment entity not found for id: " + payment.id()));
+            entity.setUserId(payment.userId());
+            entity.setAccountId(payment.accountId());
             entity.setProductId(payment.productId());
             entity.setQuantity(payment.quantity());
             entity.setTotalAmount(payment.totalAmount());
@@ -56,6 +60,8 @@ public class PaymentRepositoryAdapter implements PaymentRepositoryPort {
     private Payment toDomain(PaymentEntity entity) {
         return new Payment(
                 entity.getId(),
+                entity.getUserId(),
+                entity.getAccountId(),
                 entity.getProductId(),
                 entity.getQuantity(),
                 entity.getTotalAmount(),

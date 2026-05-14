@@ -16,6 +16,8 @@ import java.util.Objects;
  */
 public record Payment(
         Long id,
+        Long userId,
+        Long accountId,
         Long productId,
         int quantity,
         BigDecimal totalAmount,
@@ -33,6 +35,18 @@ public record Payment(
         if (totalAmount.compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("totalAmount must be > 0");
         if (currency.isBlank()) throw new IllegalArgumentException("currency must not be blank");
+    }
+
+    public Payment(
+            Long id,
+            Long productId,
+            int quantity,
+            BigDecimal totalAmount,
+            String currency,
+            PaymentStatus status,
+            PaymentMethod paymentMethod
+    ) {
+        this(id, null, null, productId, quantity, totalAmount, currency, status, paymentMethod);
     }
 }
 

@@ -1,8 +1,11 @@
 package com.example.user.api.config;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.AnyNestedCondition;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -49,11 +52,38 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@ConditionalOnExpression(
-        "!'${spring.security.oauth2.resourceserver.jwt.issuer-uri:}'.isEmpty()" +
-        " || !'${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}'.isEmpty()"
-)
+@Conditional(SecurityConfig.JwtResourceServerPropertiesPresent.class)
 public class SecurityConfig {
+
+    /**
+     * Activates this configuration when either issuer-uri or jwk-set-uri is provided.
+     * ConditionalOnProperty handles relaxed binding from env vars reliably.
+     */
+    static class JwtResourceServerPropertiesPresent extends AnyNestedCondition {
+        JwtResourceServerPropertiesPresent() {
+            super(ConfigurationPhase.REGISTER_BEAN);
+        }
+
+        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.issuer-uri")
+        static class IssuerUriPresent {
+        }
+
+        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.issuer.uri")
+        static class IssuerUriDotPresent {
+        }
+
+        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.jwk-set-uri")
+        static class JwkSetUriPresent {
+        }
+
+        @ConditionalOnProperty(name = "spring.security.oauth2.resourceserver.jwt.jwk.set.uri")
+        static class JwkSetUriDotPresent {
+        }
+
+        @Profile("docker")
+        static class DockerProfileActive {
+        }
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

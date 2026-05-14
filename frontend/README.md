@@ -32,8 +32,8 @@ docker compose up --build
 
 Then open `https://localhost:3000`.
 
-testuser / password
-adminuser / password
+- `testuser` / `password`
+- `adminuser` / `password`
 
 > The frontend container serves static assets via Nginx and proxies `/api/*` to the backend container.
 
@@ -41,8 +41,31 @@ adminuser / password
 
 - Client ID: `hexagonal-scim-public` (or match `VITE_KEYCLOAK_CLIENT_ID`)
 - Client type: `public`
-- Valid redirect URIs: `http://localhost:3000/*` and `http://localhost:5173/*`
-- Web origins: `http://localhost:3000` and `http://localhost:5173`
+- Standard Flow: `Enabled`
+- Direct Access Grants: `Enabled` (intentional for local Postman/password-grant workflows)
+- Valid redirect URIs: `http://localhost:3000/*`, `https://localhost:3000/*`, `http://localhost:5173/*`, `https://localhost:5173/*`
+- Web origins: `http://localhost:3000`, `https://localhost:3000`, `http://localhost:5173`, `https://localhost:5173`
+
+## Troubleshooting
+
+- **Invalid redirect URI**
+  - Cause: frontend origin missing in Keycloak client config.
+  - Fix: add exact origin/redirect values from this README to `hexagonal-scim-public`.
+- **Mixed HTTP/HTTPS in browser**
+  - Cause: app opened over `http://` while Keycloak redirect expects `https://` (or the opposite).
+  - Fix: when using Docker, always open `https://localhost:3000`.
+- **Realm/client config changes not visible**
+  - Cause: Keycloak imports `docker/keycloak/realm-export.json` only on first init of a fresh DB volume.
+  - Fix: restart with fresh volumes for local reset:
+
+```bash
+cd /Users/copor/IdeaProjects/hexagonal-scim
+docker compose down -v
+docker compose up --build
+```
+- **Session expired / login loop**
+  - Cause: token expired or browser holds stale auth cookies.
+  - Fix: use "Sign in again" in UI or clear site data for `localhost` and retry.
 
 ## Next step
 

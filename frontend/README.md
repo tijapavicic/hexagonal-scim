@@ -32,6 +32,9 @@ docker compose up --build
 
 Then open `https://localhost:3000`.
 
+testuser / password
+adminuser / password
+
 > The frontend container serves static assets via Nginx and proxies `/api/*` to the backend container.
 
 ## Required Keycloak settings

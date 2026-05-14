@@ -27,13 +27,13 @@ Progress from login-only UI to a production-ready frontend that can securely cal
 
 ## Phase 2 - Backend API Integration
 
-- [ ] Add a minimal API module (e.g., `frontend/src/api/http.ts`) that:
-  - [ ] Injects `Authorization: Bearer <token>`
-  - [ ] Calls `updateToken(30)` before request when needed
-  - [ ] Handles `401/403` with re-login strategy
-- [ ] Build one thin vertical slice endpoint call (recommended: list users) and render response in a basic table/list component.
-- [ ] Add explicit loading/empty/error states for the first API page.
-- [ ] Keep request/response models in dedicated DTO files (`frontend/src/types/*`) to avoid leaking transport shape into rendering logic.
+- [x] Add a minimal API module (e.g., `frontend/src/api/http.ts`) that:
+  - [x] Injects `Authorization: Bearer <token>`
+  - [x] Calls `updateToken(30)` before request when needed
+  - [x] Handles `401/403` with re-login strategy
+- [x] Build one thin vertical slice endpoint call (recommended: list users) and render response in a basic table/list component.
+- [x] Add explicit loading/empty/error states for the first API page.
+- [x] Keep request/response models in dedicated DTO files (`frontend/src/types/*`) to avoid leaking transport shape into rendering logic.
 
 ## Phase 3 - Contract and Security Hygiene
 

@@ -521,6 +521,17 @@ cd frontend && npm install && npm run dev
 
 ```bash
 docker compose down -v && docker compose up --build
+
+# Everything (app + full observability)
+docker compose up --build
+
+#App only — no observability tools
+#Fast startup, no metrics/logs needed
+docker compose -f docker-compose.yml up --build
+
+#Everything but ports are internal only
+#Staging / CI — no host port bindings
+docker compose -f docker-compose.yml -f docker-compose.observability.yml up --build
 ```
 
 Docker Compose automatically merges `docker-compose.override.yml` — this exposes port 8080 (backend) and 5432 (PostgreSQL) to the host for local development.

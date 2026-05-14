@@ -33,10 +33,10 @@ mvn -B clean verify
 
 ## 4) Security and Governance
 
-- [ ] Confirm account endpoints are covered by the intended auth policy.
-- [ ] Verify no permissive CORS changes were introduced.
-- [ ] Keep actuator exposure minimal and explicit.
-- [ ] Run dependency scan if dependencies change in follow-up work.
+- [x] Confirm account endpoints are covered by the intended auth policy.
+- [x] Verify no permissive CORS changes were introduced.
+- [x] Keep actuator exposure minimal and explicit.
+- [x] Run dependency scan if dependencies change in follow-up work.
 
 ### Optional security gate command (only if dependencies change)
 

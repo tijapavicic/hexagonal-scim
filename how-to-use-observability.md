@@ -42,7 +42,7 @@ Think of it this way:
 
 you can run it with 
 ```bash
-docker compose stop splunk && docker compose up splunk -d```
+docker compose stop splunk && docker compose up splunk -d
 ```
 
 ## 2. Stack Overview

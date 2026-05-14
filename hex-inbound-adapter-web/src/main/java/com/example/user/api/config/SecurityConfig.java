@@ -59,6 +59,12 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                // CORS is intentionally disabled at the Spring layer.
+                // In production, the React SPA is served by the same Nginx instance that
+                // reverse-proxies /api/* to this service — so the browser never sees a
+                // cross-origin request.  Keeping CORS disabled here prevents accidental
+                // permissive header leaks if the app is ever run outside of Nginx.
+                .cors(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(

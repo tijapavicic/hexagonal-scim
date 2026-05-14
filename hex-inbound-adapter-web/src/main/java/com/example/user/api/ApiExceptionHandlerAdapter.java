@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -72,6 +73,14 @@ public class ApiExceptionHandlerAdapter {
         return error("VALIDATION_ERROR", detail, req);
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleUnreadableBody(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        // Root cause may contain low-level parse details — don't expose to client
+        log.debug("Unreadable request body on {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
+        return error("MALFORMED_REQUEST", "Request body is missing or cannot be parsed", req);
+    }
+
     // ─── Domain invariant violations ─────────────────────────────────────────
 
     /**
@@ -100,12 +109,14 @@ public class ApiExceptionHandlerAdapter {
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+        log.warn("403 Forbidden: {} {} — {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return error("ACCESS_DENIED", ex.getMessage(), req);
     }
 
     @ExceptionHandler(AuthenticationException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse handleAuthentication(AuthenticationException ex, HttpServletRequest req) {
+        log.warn("401 Unauthorized: {} {} — {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return error("UNAUTHORIZED", ex.getMessage(), req);
     }
 

@@ -2,6 +2,8 @@ package com.example.user.api.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -10,8 +12,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.Collection;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Authorization interceptor that enforces role-based access control on all {@code /api/**} endpoints.
@@ -26,12 +28,18 @@ import java.util.Set;
  *       additionally require {@code ROLE_ADMIN}.</li>
  * </ul>
  *
+ * <p>Denials are logged at {@code WARN} level with principal, client IP, method, and path
+ * to support security audit trails. The message returned to the caller is intentionally
+ * generic — detail stays in the log, not in the response body.
+ *
  * <p>An {@link AccessDeniedException} thrown here is caught by
- * {@link ApiExceptionHandlerAdapter} (via {@code @RestControllerAdvice}) and serialised
- * as a JSON {@code 403} response — ensuring a consistent error envelope.
+ * {@link com.example.user.api.ApiExceptionHandlerAdapter} (via {@code @RestControllerAdvice})
+ * and serialised as a JSON {@code 403} response — ensuring a consistent error envelope.
  */
 @Component
 public class AuthorizationInterceptor implements HandlerInterceptor {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthorizationInterceptor.class);
 
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
@@ -44,22 +52,26 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        Collection<? extends GrantedAuthority> authorities = auth.getAuthorities();
+        // Single pass over authorities — avoids double-streaming for write-method checks
+        Set<String> roles = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
 
-        boolean hasRequiredRole = authorities.stream()
-                .anyMatch(a -> "ROLE_USER".equals(a.getAuthority()) || "ROLE_ADMIN".equals(a.getAuthority()));
+        boolean isAdmin = roles.contains("ROLE_ADMIN");
+        boolean isUser  = roles.contains("ROLE_USER");
 
-        if (!hasRequiredRole) {
-            throw new AccessDeniedException("Access denied: ROLE_USER or ROLE_ADMIN required");
+        if (!isAdmin && !isUser) {
+            log.warn("Access denied — no recognised role. principal={} roles={} ip={} method={} path={}",
+                    auth.getName(), roles, request.getRemoteAddr(),
+                    request.getMethod(), request.getRequestURI());
+            throw new AccessDeniedException("Insufficient permissions");
         }
 
-        if (WRITE_METHODS.contains(request.getMethod())) {
-            boolean hasAdminRole = authorities.stream()
-                    .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-            if (!hasAdminRole) {
-                throw new AccessDeniedException(
-                        "Access denied: ROLE_ADMIN required for " + request.getMethod() + " operations");
-            }
+        if (WRITE_METHODS.contains(request.getMethod()) && !isAdmin) {
+            log.warn("Access denied — write operation requires ROLE_ADMIN. principal={} ip={} method={} path={}",
+                    auth.getName(), request.getRemoteAddr(),
+                    request.getMethod(), request.getRequestURI());
+            throw new AccessDeniedException("Insufficient permissions");
         }
 
         return true;

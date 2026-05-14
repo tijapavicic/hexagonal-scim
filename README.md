@@ -822,6 +822,21 @@ curl -i -X POST http://localhost:8080/api/v1/users \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"email":"alice@example.com","displayName":"Alice"}'
 
+# Create an account for user 1
+ACCOUNT_ID=$(curl -s -X POST http://localhost:8080/api/v1/users/1/accounts \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"name":"Primary"}' | jq -r .id)
+
+# List accounts for user 1
+curl -i http://localhost:8080/api/v1/users/1/accounts -H "Authorization: Bearer $TOKEN"
+
+# Get one account by id
+curl -i http://localhost:8080/api/v1/users/1/accounts/$ACCOUNT_ID -H "Authorization: Bearer $TOKEN"
+
+# Delete one account by id
+curl -i -X DELETE http://localhost:8080/api/v1/users/1/accounts/$ACCOUNT_ID -H "Authorization: Bearer $TOKEN"
+
 # Get all users (paginated, default page=0, size=10)
 curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"
 

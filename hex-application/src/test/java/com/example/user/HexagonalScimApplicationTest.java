@@ -12,7 +12,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -143,7 +145,7 @@ class HexagonalScimApplicationTest {
 
     @Test
     void createAndReadUserAccountFlow() throws Exception {
-        MvcResult createResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/users/1/accounts")
+        MvcResult createResult = mockMvc.perform(post("/api/v1/users/1/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -172,7 +174,7 @@ class HexagonalScimApplicationTest {
 
     @Test
     void createAccountReturns404ForUnknownUser() throws Exception {
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/users/999999/accounts")
+        mockMvc.perform(post("/api/v1/users/999999/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -181,6 +183,87 @@ class HexagonalScimApplicationTest {
                                 """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void createAccountReturns409ForDuplicateNameOnSameUser() throws Exception {
+        String name = "Primary-dup-" + System.nanoTime();
+
+        mockMvc.perform(post("/api/v1/users/1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.name").value(name));
+
+        mockMvc.perform(post("/api/v1/users/1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_ALREADY_EXISTS"));
+    }
+
+    @Test
+    void createAccountAllowsSameNameForDifferentUsers() throws Exception {
+        String sharedName = "Shared-" + System.nanoTime();
+
+        mockMvc.perform(post("/api/v1/users/1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + sharedName + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.name").value(sharedName));
+
+        mockMvc.perform(post("/api/v1/users/2/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + sharedName + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.name").value(sharedName));
+    }
+
+    @Test
+    void deleteAccountRemovesEntryFromList() throws Exception {
+        String firstName = "ToDelete-" + System.nanoTime();
+        String secondName = "ToKeep-" + System.nanoTime();
+
+        MvcResult firstCreate = mockMvc.perform(post("/api/v1/users/1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + firstName + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        MvcResult secondCreate = mockMvc.perform(post("/api/v1/users/1/accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + secondName + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long toDeleteId = objectMapper.readTree(firstCreate.getResponse().getContentAsString()).path("id").asLong();
+        long toKeepId = objectMapper.readTree(secondCreate.getResponse().getContentAsString()).path("id").asLong();
+
+        mockMvc.perform(delete("/api/v1/users/1/accounts/{accountId}", toDeleteId))
+                .andExpect(status().isNoContent());
+
+        MvcResult listResult = mockMvc.perform(get("/api/v1/users/1/accounts"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode accounts = objectMapper.readTree(listResult.getResponse().getContentAsString());
+        boolean deletedStillPresent = false;
+        boolean keptStillPresent = false;
+        for (JsonNode account : accounts) {
+            long id = account.path("id").asLong();
+            if (id == toDeleteId) {
+                deletedStillPresent = true;
+            }
+            if (id == toKeepId) {
+                keptStillPresent = true;
+            }
+        }
+
+        org.junit.jupiter.api.Assertions.assertFalse(deletedStillPresent, "deleted account should not be listed");
+        org.junit.jupiter.api.Assertions.assertTrue(keptStillPresent, "non-deleted account should remain listed");
     }
 }
 

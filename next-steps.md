@@ -18,12 +18,12 @@ mvn -B clean verify
 
 ## 2) Short Term (this sprint)
 
-- [ ] Add request validation annotations to account DTOs (for example, non-blank `name`, max length).
-- [ ] Add controller tests for validation error responses (400) and payload edge cases.
-- [ ] Add integration test for duplicate account name on same user -> 409.
-- [ ] Add integration test for same account name across different users -> allowed.
-- [ ] Add integration test for delete-account flow and list consistency.
-- [ ] Add API examples for accounts in `README.md` (create/get/list/delete).
+- [x] Add request validation annotations to account DTOs (for example, non-blank `name`, max length).
+- [x] Add controller tests for validation error responses (400) and payload edge cases.
+- [x] Add integration test for duplicate account name on same user -> 409.
+- [x] Add integration test for same account name across different users -> allowed.
+- [x] Add integration test for delete-account flow and list consistency.
+- [x] Add API examples for accounts in `README.md` (create/get/list/delete).
 
 ## 3) Observability and Operations
 

@@ -1,9 +1,10 @@
 package com.example.user.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public record CreateAccountRequest(
-        @NotBlank String name
+        @NotBlank @Size(max = 120) String name
 ) {
 }
 

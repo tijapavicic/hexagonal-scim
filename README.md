@@ -2,6 +2,37 @@
 
 Production-grade multi-module Spring Boot service using hexagonal architecture.
 
+Quick links: [Frontend Quick Start](#frontend-quick-start)
+
+## Contents
+
+- [Frontend Quick Start](#frontend-quick-start)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [Modules](#modules)
+- [Database migrations](#database-migrations)
+- [Production release checklist](#production-release-checklist)
+- [API versioning](#api-versioning)
+- [Endpoints](#endpoints)
+- [Frontend](#frontend)
+- [Build](#build)
+- [Run With Docker Compose](#run-with-docker-compose)
+- [Authentication (Keycloak)](#authentication-keycloak)
+
+## Frontend Quick Start
+
+Run the full stack (frontend + backend + Keycloak + DB):
+
+```bash
+docker compose up --build
+```
+
+Then open `https://localhost:3000`.
+
+- Login: `testuser / password` (or `adminuser / password`)
+- Keycloak admin: `https://localhost:8443`
+- First visit uses a self-signed cert; accept the browser warning for local dev.
+
 ## Project Structure
 
 ```
@@ -499,24 +530,28 @@ newman run postman/hexagonal-scim-v2.postman_collection.json -e postman/local-do
 
 ## Frontend
 
-A React + TypeScript single-page application is included in the `frontend/` directory.
+A TypeScript + Web Components single-page frontend is included in the `frontend/` directory.
 
-**Technology stack**: React 18 · Vite · TypeScript · Tailwind CSS · keycloak-js · TanStack Query · React Router
+**Technology stack**: Web Components · Vite · TypeScript · keycloak-js
 
-**Features**: Keycloak SSO login (PKCE), paginated user table, create / edit / delete modals, role badges in navbar, automatic token refresh.
+**Current features**: Keycloak SSO login redirect (PKCE), lifecycle-aware auth states, profile panel (username/roles/token expiry), deterministic logout redirect.
 
 ### Run frontend in development mode
 
 ```bash
-# Terminal 1 — backend (H2, no auth)
+# Terminal 1 — backend API
 mvn -pl hex-application spring-boot:run
 
 # Terminal 2 — frontend dev server with hot-reload (port 3000)
-cd frontend && npm install && npm run dev
+cd frontend
+npm install
+npm run dev
 ```
 
-> In dev mode the Vite proxy forwards `/api/*` to `http://localhost:8080`, so there is no CORS issue.  
-> Auth is disabled on the backend when started without Keycloak, so no login is required.
+Open `http://localhost:3000`.
+
+> In dev mode the Vite proxy forwards `/api/*` to `http://localhost:8080`, so there is no CORS issue.
+> For local Keycloak login in frontend dev mode, use `frontend/.env.example` as reference and set `VITE_KEYCLOAK_*` values in `frontend/.env`.
 
 ### Run everything with Docker Compose (with auth)
 
@@ -539,7 +574,7 @@ Docker Compose automatically merges `docker-compose.override.yml` — this expos
 
 | Service | URL |
 |---------|-----|
-| Frontend (React) | https://localhost:3000 |
+| Frontend (Web) | https://localhost:3000 |
 | Backend (Spring Boot) | http://localhost:8080 (dev only — via override) |
 | Keycloak admin | https://localhost:8443 |
 | Prometheus | http://localhost:9090 (dev only — via override) |
@@ -554,7 +589,7 @@ docker compose -f docker-compose.yml up --build
 
 Port 8080 is NOT exposed on the host. All external API traffic flows through Nginx on port 3000.
 
-Login with `testuser / password` or `adminuser / password` — Keycloak redirects back automatically.
+Login with `testuser / password` or `adminuser / password` — Keycloak redirects back to the frontend automatically.
 
 > **Self-signed certificate**: the browser will show a security warning on first visit.  
 > Click **Advanced → Proceed** (Chrome) or **Accept the Risk** (Firefox).  
@@ -593,7 +628,7 @@ Alternatively, update `hex-application/src/main/resources/application-postgresql
 docker compose up --build
 ```
 
-Starts three services: **PostgreSQL** (5432), **Keycloak** (8180), and the **Spring Boot app** (8080).  
+Starts four core services: **PostgreSQL** (5432), **Keycloak** (8443 on host), **Spring Boot app** (internal 8080, exposed on 8080 in dev override), and **Frontend** (https://localhost:3000).  
 The `hexagonal-scim` realm, two clients, two test users, and two roles are imported automatically.
 
 ---

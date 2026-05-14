@@ -21,6 +21,19 @@ npm install
 npm run dev
 ```
 
+## Run frontend with Docker Compose
+
+From repository root, start the stack:
+
+```bash
+cd /Users/copor/IdeaProjects/hexagonal-scim
+docker compose up --build
+```
+
+Then open `https://localhost:3000`.
+
+> The frontend container serves static assets via Nginx and proxies `/api/*` to the backend container.
+
 ## Required Keycloak settings
 
 - Client ID: `hexagonal-scim-public` (or match `VITE_KEYCLOAK_CLIENT_ID`)

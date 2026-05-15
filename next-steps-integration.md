@@ -172,9 +172,34 @@ export interface UserDto {
   active: boolean;
 }
 
-export type CreateUserDto = Omit<UserDto, 'id'>;
-export type UpdateUserDto = Omit<UserDto, 'id'>;
+export interface CreateUserDto {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  active: boolean;
+}
+
+export interface UpdateUserDto {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  active: boolean;
+}
 ```
+
+#### Implementation notes
+
+- Replaced implicit `Omit<UserDto, 'id'>` aliases with explicit interfaces for `CreateUserDto` and `UpdateUserDto`.
+- Kept the payload shape identical to backend validation constraints (`username`, `email`, `firstName`, `lastName`, `active`) while making API contracts easier to scan and evolve.
+- Confirmed `src/api/users.ts` and `src/components/pages/users-page.ts` consume these DTOs directly for request typing.
+
+#### Small refactor: CSS extracted from component logic
+
+- Moved the large inline users-page CSS template out of `src/components/pages/users-page.ts`.
+- Added `src/components/pages/users-page.styles.ts` exporting `USERS_PAGE_STYLES`.
+- Updated `src/components/pages/users-page.ts` to import `USERS_PAGE_STYLES`, reducing component noise and improving readability/maintainability.
 
 ### 7.3 – `pages/users-page.ts` component ✅
 

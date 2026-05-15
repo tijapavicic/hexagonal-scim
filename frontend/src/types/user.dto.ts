@@ -12,8 +12,20 @@ export interface UserDto {
 }
 
 /** Fields required to create a user (id is server-assigned). */
-export type CreateUserDto = Omit<UserDto, 'id'>;
+export interface CreateUserDto {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  active: boolean;
+}
 
 /** Fields required to fully replace a user (PUT semantics, id in URL). */
-export type UpdateUserDto = Omit<UserDto, 'id'>;
+export interface UpdateUserDto {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  active: boolean;
+}
 

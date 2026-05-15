@@ -25,7 +25,9 @@ import java.util.stream.Collectors;
  *   <li>Authenticated users must carry at least {@code ROLE_USER} or {@code ROLE_ADMIN}
  *       to access any endpoint.</li>
  *   <li>Mutating operations ({@code POST}, {@code PUT}, {@code PATCH}, {@code DELETE})
- *       additionally require {@code ROLE_ADMIN}.</li>
+ *       generally require {@code ROLE_ADMIN}.</li>
+ *   <li>Exception — paths listed in {@code USER_ALLOWED_POST_PATHS} may be POSTed by any
+ *       authenticated user. Currently: {@code POST /api/v1/payments} (self-service purchase).</li>
  * </ul>
  *
  * <p>Denials are logged at {@code WARN} level with principal, client IP, method, and path
@@ -42,6 +44,12 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
     private static final Logger log = LoggerFactory.getLogger(AuthorizationInterceptor.class);
 
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
+
+    /**
+     * POST paths that any authenticated user (ROLE_USER or ROLE_ADMIN) may call.
+     * All other write paths still require ROLE_ADMIN.
+     */
+    private static final Set<String> USER_ALLOWED_POST_PATHS = Set.of("/api/v1/payments");
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -68,10 +76,16 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
         }
 
         if (WRITE_METHODS.contains(request.getMethod()) && !isAdmin) {
-            log.warn("Access denied — write operation requires ROLE_ADMIN. principal={} ip={} method={} path={}",
-                    auth.getName(), request.getRemoteAddr(),
-                    request.getMethod(), request.getRequestURI());
-            throw new AccessDeniedException("Insufficient permissions");
+            String path = request.getRequestURI();
+            boolean isSelfServicePost = "POST".equals(request.getMethod())
+                    && USER_ALLOWED_POST_PATHS.contains(path);
+
+            if (!isSelfServicePost) {
+                log.warn("Access denied — write operation requires ROLE_ADMIN. principal={} ip={} method={} path={}",
+                        auth.getName(), request.getRemoteAddr(),
+                        request.getMethod(), request.getRequestURI());
+                throw new AccessDeniedException("Insufficient permissions");
+            }
         }
 
         return true;

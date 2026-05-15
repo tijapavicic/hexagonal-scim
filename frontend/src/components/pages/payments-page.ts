@@ -8,10 +8,12 @@ import { PAYMENTS_PAGE_STYLES } from './payments-page.styles';
 import { getAuthProfile } from '../../auth/keycloak';
 
 interface PaymentFormValues {
-  amount: string;
+  productId: string;
+  quantity: string;
+  paymentMethod: string;
   currency: string;
-  status: string;
   userId: string;
+  accountId: string;
 }
 
 type ModalState = { kind: 'none' } | { kind: 'create' };
@@ -29,10 +31,12 @@ class PaymentsPageElement extends HTMLElement {
 
   private modal: ModalState = { kind: 'none' };
   private formValues: PaymentFormValues = {
-    amount: '',
+    productId: '',
+    quantity: '1',
+    paymentMethod: 'BANK_ACCOUNT',
     currency: 'EUR',
-    status: 'PENDING',
     userId: '',
+    accountId: '',
   };
   private formError: string | null = null;
   private submitting = false;
@@ -77,19 +81,26 @@ class PaymentsPageElement extends HTMLElement {
     const form = this.querySelector<HTMLFormElement>('#payment-form');
     if (!form) return null;
     return {
-      amount: (form.querySelector<HTMLInputElement>('[name="amount"]')?.value ?? '').trim(),
-      currency: (form.querySelector<HTMLSelectElement>('[name="currency"]')?.value ?? '').trim(),
-      status: (form.querySelector<HTMLSelectElement>('[name="status"]')?.value ?? '').trim(),
-      userId: (form.querySelector<HTMLInputElement>('[name="userId"]')?.value ?? '').trim(),
+      productId:     (form.querySelector<HTMLInputElement>('[name="productId"]')?.value ?? '').trim(),
+      quantity:      (form.querySelector<HTMLInputElement>('[name="quantity"]')?.value ?? '1').trim(),
+      paymentMethod: (form.querySelector<HTMLSelectElement>('[name="paymentMethod"]')?.value ?? '').trim(),
+      currency:      (form.querySelector<HTMLSelectElement>('[name="currency"]')?.value ?? '').trim(),
+      userId:        (form.querySelector<HTMLInputElement>('[name="userId"]')?.value ?? '').trim(),
+      accountId:     (form.querySelector<HTMLInputElement>('[name="accountId"]')?.value ?? '').trim(),
     };
   }
 
   private validateForm(values: PaymentFormValues): string | null {
-    if (!values.amount) return 'Amount is required.';
-    const numeric = Number(values.amount);
-    if (!Number.isFinite(numeric) || numeric <= 0) return 'Amount must be greater than 0.';
+    if (!values.productId || isNaN(Number(values.productId)) || Number(values.productId) <= 0)
+      return 'Product ID must be a positive number.';
+    const qty = Number(values.quantity);
+    if (!Number.isInteger(qty) || qty < 1) return 'Quantity must be a whole number ≥ 1.';
+    if (!values.paymentMethod) return 'Payment method is required.';
     if (!values.currency) return 'Currency is required.';
-    if (!values.status) return 'Status is required.';
+    const hasUserId    = values.userId !== '';
+    const hasAccountId = values.accountId !== '';
+    if (hasUserId !== hasAccountId)
+      return 'User ID and Account ID must both be provided together, or both left empty.';
     return null;
   }
 
@@ -110,10 +121,12 @@ class PaymentsPageElement extends HTMLElement {
     this.render();
 
     const body: CreatePaymentDto = {
-      amount: values.amount,
-      currency: values.currency,
-      status: values.status,
-      ...(values.userId ? { userId: Number(values.userId) } : {}),
+      productId:     Number(values.productId),
+      quantity:      Number(values.quantity),
+      paymentMethod: values.paymentMethod,
+      currency:      values.currency,
+      ...(values.userId    ? { userId:    Number(values.userId)    } : {}),
+      ...(values.accountId ? { accountId: Number(values.accountId) } : {}),
     };
 
     try {
@@ -134,9 +147,9 @@ class PaymentsPageElement extends HTMLElement {
 
   private statusClass(status: string): string {
     const normalized = status.toUpperCase();
-    if (normalized === 'PENDING') return 'badge-pending';
+    if (normalized === 'PENDING')   return 'badge-pending';
     if (normalized === 'COMPLETED') return 'badge-completed';
-    if (normalized === 'FAILED') return 'badge-failed';
+    if (normalized === 'FAILED')    return 'badge-failed';
     return 'badge-default';
   }
 
@@ -146,17 +159,21 @@ class PaymentsPageElement extends HTMLElement {
 
     return `
       <div class="detail-grid">
-        ${field('ID', String(payment.id))}
-        ${field('Amount', payment.amount)}
-        ${field('Currency', payment.currency)}
-        ${field('Status', payment.status)}
-        ${field('User ID', payment.userId === null ? 'none' : String(payment.userId))}
-        ${field('Created At', payment.createdAt)}
+        ${field('ID',             String(payment.id))}
+        ${field('Product ID',     payment.productId === null  ? '–' : String(payment.productId))}
+        ${field('Quantity',       String(payment.quantity))}
+        ${field('Total Amount',   payment.totalAmount)}
+        ${field('Currency',       payment.currency)}
+        ${field('Status',         payment.status)}
+        ${field('Payment Method', payment.paymentMethod)}
+        ${field('User ID',        payment.userId    === null  ? '–' : String(payment.userId))}
+        ${field('Account ID',     payment.accountId === null  ? '–' : String(payment.accountId))}
       </div>`;
   }
 
   private tableContent(): string {
-    if (this.loading) return '<div class="loading-state" role="status" aria-label="Loading payments"><div class="spinner" aria-hidden="true"></div>Loading payments\u2026</div>';
+    if (this.loading)
+      return '<div class="loading-state" role="status" aria-label="Loading payments"><div class="spinner" aria-hidden="true"></div>Loading payments\u2026</div>';
     if (this.listError) {
       return `<div class="state-msg error-msg">${this.listError}<br><br>
         <button class="btn btn-secondary" data-action="reload">Retry</button>
@@ -173,11 +190,11 @@ class PaymentsPageElement extends HTMLElement {
       return `
         <tr class="payment-row">
           <td>${payment.id}</td>
-          <td>${payment.amount}</td>
+          <td>${payment.productId ?? '–'}</td>
+          <td>${payment.quantity}</td>
+          <td>${payment.totalAmount}</td>
           <td>${payment.currency}</td>
           <td><span class="badge ${this.statusClass(payment.status)}">${payment.status}</span></td>
-          <td>${payment.userId === null ? '-' : payment.userId}</td>
-          <td>${payment.createdAt}</td>
           <td>
             <div class="actions">
               <button class="btn btn-secondary" data-action="toggle-detail" data-id="${payment.id}">View</button>
@@ -192,11 +209,11 @@ class PaymentsPageElement extends HTMLElement {
         <thead>
           <tr>
             <th>ID</th>
-            <th>Amount</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Total</th>
             <th>Currency</th>
             <th>Status</th>
-            <th>User ID</th>
-            <th>Created At</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -206,36 +223,59 @@ class PaymentsPageElement extends HTMLElement {
 
   private createModalTemplate(): string {
     const open = this.modal.kind === 'create';
-    const confirmLabel = this.submitting ? 'Saving...' : 'Create';
+    const confirmLabel = this.submitting ? 'Saving...' : 'Purchase';
 
     return `
-      <modal-dialog id="payment-modal" title="Create Payment" confirm-label="${confirmLabel}" ${open ? 'open' : ''}>
+      <modal-dialog id="payment-modal" title="New Payment / Purchase" confirm-label="${confirmLabel}" ${open ? 'open' : ''}>
         ${this.formError ? `<p class="form-error">${this.formError}</p>` : ''}
         <form id="payment-form" class="form-grid" autocomplete="off">
+
           <div class="field">
-            <label for="p-amount">Amount</label>
-            <input id="p-amount" type="text" name="amount" value="${this.formValues.amount}" placeholder="e.g. 19.99" required>
+            <label for="p-productId">Product ID <span style="color:#b91c1c">*</span></label>
+            <input id="p-productId" type="number" name="productId" min="1"
+                   value="${this.formValues.productId}" placeholder="e.g. 1" required>
           </div>
+
           <div class="field">
-            <label for="p-currency">Currency</label>
+            <label for="p-quantity">Quantity <span style="color:#b91c1c">*</span></label>
+            <input id="p-quantity" type="number" name="quantity" min="1"
+                   value="${this.formValues.quantity}" placeholder="e.g. 1" required>
+          </div>
+
+          <div class="field">
+            <label for="p-paymentMethod">Payment Method <span style="color:#b91c1c">*</span></label>
+            <select id="p-paymentMethod" name="paymentMethod" required>
+              ${['BANK_ACCOUNT', 'PAYPAL', 'IDEAL']
+                .map((m) => `<option value="${m}" ${this.formValues.paymentMethod === m ? 'selected' : ''}>${m.replace('_', ' ')}</option>`)
+                .join('')}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="p-currency">Currency <span style="color:#b91c1c">*</span></label>
             <select id="p-currency" name="currency" required>
-              ${['EUR', 'USD', 'GBP']
+              ${['EUR', 'USD']
                 .map((c) => `<option value="${c}" ${this.formValues.currency === c ? 'selected' : ''}>${c}</option>`)
                 .join('')}
             </select>
           </div>
+
+          <p style="font-size:13px;color:#6b7280;margin-top:4px;">
+            Optional: fill both fields below to debit an account on success.
+          </p>
+
           <div class="field">
-            <label for="p-status">Status</label>
-            <select id="p-status" name="status" required>
-              ${['PENDING', 'COMPLETED', 'FAILED']
-                .map((s) => `<option value="${s}" ${this.formValues.status === s ? 'selected' : ''}>${s}</option>`)
-                .join('')}
-            </select>
+            <label for="p-userId">Your User ID</label>
+            <input id="p-userId" type="number" name="userId" min="1"
+                   value="${this.formValues.userId}" placeholder="Leave blank to skip debit">
           </div>
+
           <div class="field">
-            <label for="p-userId">User ID (optional)</label>
-            <input id="p-userId" type="text" name="userId" value="${this.formValues.userId}" placeholder="e.g. 42">
+            <label for="p-accountId">Your Account ID</label>
+            <input id="p-accountId" type="number" name="accountId" min="1"
+                   value="${this.formValues.accountId}" placeholder="Leave blank to skip debit">
           </div>
+
         </form>
       </modal-dialog>`;
   }
@@ -244,9 +284,7 @@ class PaymentsPageElement extends HTMLElement {
     return `
       <div class="page-header">
         <h2>Payments</h2>
-        ${this.isAdmin
-          ? `<button class="btn btn-primary" data-action="create">+ Create Payment</button>`
-          : ''}
+        <button class="btn btn-primary" data-action="create">+ New Payment</button>
       </div>
 
       <div class="card">${this.tableContent()}</div>
@@ -255,7 +293,7 @@ class PaymentsPageElement extends HTMLElement {
         ? `<pagination-bar page="${this.page}" size="${this.size}" has-more="${this.hasMore}"></pagination-bar>`
         : ''}
 
-      ${this.isAdmin ? this.createModalTemplate() : ''}
+      ${this.createModalTemplate()}
     `;
   }
 
@@ -268,7 +306,7 @@ class PaymentsPageElement extends HTMLElement {
 
   private bindEvents(): void {
     this.querySelector('[data-action="create"]')?.addEventListener('click', () => {
-      this.formValues = { amount: '', currency: 'EUR', status: 'PENDING', userId: '' };
+      this.formValues = { productId: '', quantity: '1', paymentMethod: 'BANK_ACCOUNT', currency: 'EUR', userId: '', accountId: '' };
       this.formError = null;
       this.modal = { kind: 'create' };
       this.render();

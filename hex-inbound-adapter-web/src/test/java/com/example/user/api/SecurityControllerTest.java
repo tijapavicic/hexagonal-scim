@@ -50,6 +50,15 @@ class SecurityControllerTest {
     }
 
     @Test
+    void postPayments_roleUser_allowed() {
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("u", "n/a", "ROLE_USER"));
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/payments");
+
+        assertDoesNotThrow(() -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()),
+                "POST /api/v1/payments must be allowed for ROLE_USER — self-service purchase");
+    }
+
+    @Test
     void requestRejectsUnknownRole() {
         SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("u", "n/a", "ROLE_UNKNOWN"));
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/users");

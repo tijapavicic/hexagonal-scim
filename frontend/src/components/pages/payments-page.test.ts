@@ -34,20 +34,26 @@ async function flushPromises(): Promise<void> {
 
 const paymentA = {
   id: 1,
-  amount: '100.00',
+  productId: 1,
+  quantity: 2,
+  totalAmount: '199.98',
   currency: 'EUR',
   status: 'PENDING',
+  paymentMethod: 'BANK_ACCOUNT',
   userId: 42,
-  createdAt: '2026-05-15T12:00:00Z',
+  accountId: 7,
 };
 
 const paymentB = {
   id: 2,
-  amount: '49.99',
+  productId: 1,
+  quantity: 1,
+  totalAmount: '99.99',
   currency: 'USD',
   status: 'COMPLETED',
+  paymentMethod: 'PAYPAL',
   userId: null,
-  createdAt: '2026-05-15T13:00:00Z',
+  accountId: null,
 };
 
 describe('payments-page component', () => {
@@ -79,7 +85,7 @@ describe('payments-page component', () => {
     const el = mount();
     await flushPromises();
 
-    expect(el.textContent).toContain('100.00');
+    expect(el.textContent).toContain('199.98');
     expect(el.textContent).toContain('USD');
     expect(el.textContent).toContain('COMPLETED');
   });
@@ -112,11 +118,12 @@ describe('payments-page component', () => {
     await flushPromises();
 
     expect(el.querySelector('.detail-grid')).not.toBeNull();
-    expect(el.textContent).toContain('Created At');
+    expect(el.textContent).toContain('Total Amount');
+    expect(el.textContent).toContain('Payment Method');
   });
 
   it('opens create modal and submits valid create payload', async () => {
-    authProfileRef.realmRoles = ['ROLE_ADMIN'];
+    // Create is available to all authenticated users
     listPaymentsMock.mockResolvedValue([paymentA]);
     createPaymentMock.mockResolvedValue({ ...paymentA, id: 99 });
     const el = mount();
@@ -127,33 +134,40 @@ describe('payments-page component', () => {
     createBtn!.click();
     await flushPromises();
 
-    const amountInput = el.querySelector<HTMLInputElement>('#p-amount');
-    const currencySelect = el.querySelector<HTMLSelectElement>('#p-currency');
-    const statusSelect = el.querySelector<HTMLSelectElement>('#p-status');
-    const userIdInput = el.querySelector<HTMLInputElement>('#p-userId');
-    expect(amountInput).not.toBeNull();
-    amountInput!.value = '19.99';
-    currencySelect!.value = 'GBP';
-    statusSelect!.value = 'PENDING';
-    userIdInput!.value = '7';
+    const productIdInput   = el.querySelector<HTMLInputElement>('#p-productId');
+    const quantityInput    = el.querySelector<HTMLInputElement>('#p-quantity');
+    const methodSelect     = el.querySelector<HTMLSelectElement>('#p-paymentMethod');
+    const currencySelect   = el.querySelector<HTMLSelectElement>('#p-currency');
+    const userIdInput      = el.querySelector<HTMLInputElement>('#p-userId');
+    const accountIdInput   = el.querySelector<HTMLInputElement>('#p-accountId');
+    expect(productIdInput).not.toBeNull();
+
+    productIdInput!.value  = '1';
+    quantityInput!.value   = '2';
+    methodSelect!.value    = 'PAYPAL';
+    currencySelect!.value  = 'USD';
+    userIdInput!.value     = '42';
+    accountIdInput!.value  = '7';
 
     el.querySelector('#payment-modal')?.dispatchEvent(new CustomEvent('dialog-confirm'));
     await flushPromises();
 
     expect(createPaymentMock).toHaveBeenCalledWith({
-      amount: '19.99',
-      currency: 'GBP',
-      status: 'PENDING',
-      userId: 7,
+      productId:     1,
+      quantity:      2,
+      paymentMethod: 'PAYPAL',
+      currency:      'USD',
+      userId:        42,
+      accountId:     7,
     });
   });
 
-  it('hides create button for ROLE_USER', async () => {
-    // authProfileRef.realmRoles is already ['ROLE_USER'] from beforeEach
+  it('shows create button for ROLE_USER (self-service purchase allowed)', async () => {
+    // ROLE_USER can initiate their own payments – backend allows POST /api/v1/payments
     listPaymentsMock.mockResolvedValue([paymentA]);
     const el = mount();
     await flushPromises();
-    expect(el.querySelector('[data-action="create"]')).toBeNull();
+    expect(el.querySelector('[data-action="create"]')).not.toBeNull();
   });
 
   it('renders pagination-bar after successful list load', async () => {

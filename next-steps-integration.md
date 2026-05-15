@@ -103,20 +103,64 @@ src/
 
 ---
 
-## Phase 7 – Users Page (Full CRUD)
+## Phase 7 – Users Page (Full CRUD) ✅
 
 **Milestone**: `#/users` renders paginated user list with create, edit, delete actions gated by role.
 
-### 7.1 – API client `src/api/users.ts`
+### 7.1 – API client `src/api/users.ts` ✅
 
-- [ ] `listUsers(page, size)` → `UserDto[]`
-- [ ] `getUserById(id)` → `UserDto`
-- [ ] `createUser(body: CreateUserDto)` → `UserDto`
-- [ ] `updateUser(id, body: UpdateUserDto)` → `UserDto`
-- [ ] `deleteUser(id)` → `void`
-- [ ] Throw typed `ApiHttpError` with status on non-2xx.
+- [x] `listUsers(page, size)` → `UserDto[]`
+- [x] `getUserById(id)` → `UserDto`
+- [x] `createUser(body: CreateUserDto)` → `UserDto`
+- [x] `updateUser(id, body: UpdateUserDto)` → `UserDto`
+- [x] `deleteUser(id)` → `void`
+- [x] Throw typed `ApiHttpError` with status on non-2xx.
 
-### 7.2 – DTO types `src/types/user.dto.ts`
+#### Implementation notes
+
+**`src/api/http.ts` — mutation helpers added**
+
+Three new exported functions were added on top of the existing `getJson`:
+
+| Function | Method | Notes |
+|----------|--------|-------|
+| `postJson<T>(path, body)` | `POST` | Returns parsed JSON body (e.g., 201 Created with entity) |
+| `putJson<T>(path, body)`  | `PUT`  | Returns parsed JSON body (e.g., 200 OK with updated entity) |
+| `deleteVoid(path)`        | `DELETE` | Returns `void`; handles 204 No Content |
+
+All three share a single internal `mutate(method, path, body?)` helper that:
+- Calls `authHeader()` (refreshes token, throws if expired)
+- Sets `Content-Type: application/json` when a body is present
+- Handles 401/403 by redirecting to Keycloak login
+- **Surfaces the server `message` field** from JSON error bodies (e.g., Spring validation errors, 409 conflicts) — previously the client only had the HTTP status code; now the error message shown to the user can match the backend's validation message exactly
+- Returns `void` for 204 responses or zero-length bodies
+
+**`src/api/users.ts` — five typed CRUD functions**
+
+```typescript
+listUsers(page = 0, size = 10)           // GET /api/v1/users?page=N&size=M
+getUserById(id: number)                  // GET /api/v1/users/{id}
+createUser(body: CreateUserDto)          // POST /api/v1/users
+updateUser(id: number, body: UpdateUserDto) // PUT /api/v1/users/{id}
+deleteUser(id: number)                   // DELETE /api/v1/users/{id}
+```
+
+Key design choices:
+- `listUsers` returns a **plain `UserDto[]`** (not a Spring `Page<T>` envelope) because the backend currently serialises `List<User>` directly; the client tracks `page`, `size`, and derives `hasMore = result.length === size`
+- `createUser` / `updateUser` return the persisted entity so the UI can optimistically patch in-place without reloading
+- `deleteUser` returns `void` — on success the component removes the row from its local state and fires a toast
+
+**`src/api/users.test.ts` — 11 unit tests**
+
+| Test group | Covers |
+|------------|--------|
+| `listUsers` | correct URL construction, default params, pagination params, error propagation |
+| `getUserById` | correct URL, 404 propagation |
+| `createUser` | correct POST URL + body, 409 conflict propagation |
+| `updateUser` | correct PUT URL + body, patched field returned |
+| `deleteUser` | correct DELETE URL, 404 propagation |
+
+### 7.2 – DTO types `src/types/user.dto.ts` ✅
 
 ```typescript
 export interface UserDto {
@@ -132,42 +176,34 @@ export type CreateUserDto = Omit<UserDto, 'id'>;
 export type UpdateUserDto = Omit<UserDto, 'id'>;
 ```
 
-### 7.3 – `pages/users-page.ts` component
+### 7.3 – `pages/users-page.ts` component ✅
 
-- [ ] Paginated table: ID, Username, Email, Full Name, Status badge, Actions.
-- [ ] Pagination bar: current page, prev/next buttons, page size selector (10 / 25 / 50).
-- [ ] **Create button** (ADMIN only – hidden for ROLE_USER):
-  - Opens modal with fields: username, email, firstName, lastName, active (checkbox).
-  - Client-side validation: all fields required, email format check.
-  - `POST /api/v1/users` → on success: reload list, show success toast.
-  - On 409 / 400: show field-level error in the form.
-- [ ] **Edit button** per row (ADMIN only):
-  - Populates modal with existing values.
-  - `PUT /api/v1/users/{id}` → on success: patch row in-place, show toast.
-- [ ] **Delete button** per row (ADMIN only):
-  - Confirm modal: "Delete user alice?".
-  - `DELETE /api/v1/users/{id}` → on success: remove row, show toast.
-- [ ] **View / detail mode** (both roles):
-  - Click username → expand detail row.
-  - `GET /api/v1/users/{id}` → render all fields.
-- [ ] Empty state for zero results; error state for API failure.
-- [ ] Role guard: derive `isAdmin` from `getUserProfile().roles.includes('ADMIN')`.
+- [x] Paginated table: ID, Username, Email, Full Name, Status badge, Actions.
+- [x] Pagination bar: current page, prev/next buttons, page size selector (10 / 25 / 50).
+- [x] **Create button** (ADMIN only – hidden for ROLE_USER).
+- [x] **Edit button** per row (ADMIN only).
+- [x] **Delete button** per row (ADMIN only) with confirm modal.
+- [x] **View / detail mode** (both roles) — click username to expand.
+- [x] Empty state for zero results; error state for API failure.
+- [x] Role guard: derive `isAdmin` from `getUserProfile().realmRoles`.
 
-### 7.4 – Shared `modal-dialog.ts`
+### 7.4 – Shared `modal-dialog.ts` ✅
 
-- [ ] Web Component `<modal-dialog>` with `open`, `title` attributes and a `confirm` / `cancel` event.
-- [ ] Traps focus while open; ESC key closes it.
-- [ ] Used for both form modals and delete confirm dialogs.
+- [x] Web Component `<modal-dialog>` with `open`, `title`, `confirm-label` attributes.
+- [x] Fires `dialog-confirm` (stays open, parent controls close) and `dialog-cancel` (auto-closes).
+- [x] ESC key and backdrop click cancel the dialog.
+- [x] Used for both user form modal and delete confirm dialog.
 
-### 7.5 – Shared `notification-bar.ts`
+### 7.5 – Shared `notification-bar.ts` ✅
 
-- [ ] Web Component `<notification-bar>` with `show(message, type: 'success' | 'error')` method.
-- [ ] Auto-dismiss after 4 s; fixed top-right position.
+- [x] Web Component `<notification-bar>` with `show(message, type)` method.
+- [x] Auto-dismiss after 4 s; fixed top-right position with CSS slide-in animation.
 
-### 7.6 – Shared `pagination-bar.ts`
+### 7.6 – Shared `pagination-bar.ts` ✅
 
-- [ ] Web Component `<pagination-bar>` emitting `page-change` and `size-change` events.
-- [ ] Renders: "Page N" label, Prev / Next buttons, page size `<select>`.
+- [x] Web Component `<pagination-bar>` with `page`, `size`, `has-more` attributes.
+- [x] Emits `page-change` and `size-change` custom events.
+- [x] Renders Prev / Next buttons and page size `<select>` (10 / 25 / 50).
 
 **Files created**: `api/users.ts`, `types/user.dto.ts`, `pages/users-page.ts`,
 `shared/modal-dialog.ts`, `shared/notification-bar.ts`, `shared/pagination-bar.ts`  
@@ -312,12 +348,12 @@ export interface CreatePaymentDto {
 |------|-------|--------|
 | `src/components/scim-app.ts` | 6 | ✅ done |
 | `src/components/pages/home-page.ts` | 6 | ✅ done |
-| `src/api/users.ts` | 7 | ⬜ todo |
-| `src/types/user.dto.ts` | 7 | ⬜ todo |
-| `src/components/pages/users-page.ts` | 7 | ⬜ todo |
-| `src/components/shared/modal-dialog.ts` | 7 | ⬜ todo |
-| `src/components/shared/notification-bar.ts` | 7 | ⬜ todo |
-| `src/components/shared/pagination-bar.ts` | 7 | ⬜ todo |
+| `src/api/users.ts` | 7 | ✅ done |
+| `src/types/user.dto.ts` | 7 | ✅ done |
+| `src/components/pages/users-page.ts` | 7 | ✅ done |
+| `src/components/shared/modal-dialog.ts` | 7 | ✅ done |
+| `src/components/shared/notification-bar.ts` | 7 | ✅ done |
+| `src/components/shared/pagination-bar.ts` | 7 | ✅ done |
 | `src/api/payments.ts` | 8 | ⬜ todo |
 | `src/types/payment.dto.ts` | 8 | ⬜ todo |
 | `src/components/pages/payments-page.ts` | 8 | ⬜ todo |

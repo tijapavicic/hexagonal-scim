@@ -9,6 +9,7 @@ import {
 } from '../auth/keycloak';
 import './pages/home-page';
 import './pages/users-page';
+import './pages/payments-page';
 
 type Route = '#/home' | '#/users' | '#/payments';
 const VALID_ROUTES: readonly Route[] = ['#/home', '#/users', '#/payments'];
@@ -112,8 +113,7 @@ class ScimAppElement extends HTMLElement {
         content.innerHTML = '<users-page></users-page>';
         break;
       case '#/payments':
-        content.innerHTML =
-          '<p style="color:#4b5563;font-family:system-ui,sans-serif;padding:8px 0;">Payments — coming soon</p>';
+        content.innerHTML = '<payments-page></payments-page>';
         break;
       case '#/home':
       default: {

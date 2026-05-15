@@ -19,6 +19,7 @@ vi.mock('../auth/keycloak', () => ({
 // Pages are custom elements – stub them so jsdom doesn't choke on Shadow DOM
 vi.mock('./pages/home-page', () => ({}));
 vi.mock('./pages/users-page', () => ({}));
+vi.mock('./pages/payments-page', () => ({}));
 
 async function flushPromises(): Promise<void> {
   await Promise.resolve();
@@ -133,7 +134,7 @@ describe('components/scim-app', () => {
     expect(element.querySelector('#page-content')?.innerHTML).toContain('users-page');
   });
 
-  it('routeTo #/payments marks Payments nav link active and shows placeholder', async () => {
+  it('routeTo #/payments marks Payments nav link active and renders payments-page', async () => {
     initAuthMock.mockResolvedValue(true);
 
     await import('./scim-app');
@@ -146,7 +147,7 @@ describe('components/scim-app', () => {
     const active = element.querySelectorAll('.active');
     expect(active).toHaveLength(1);
     expect((active[0] as HTMLElement).dataset['route']).toBe('#/payments');
-    expect(element.querySelector('#page-content')?.textContent).toContain('coming soon');
+    expect(element.querySelector('#page-content')?.innerHTML).toContain('payments-page');
   });
 
   it('routeTo unknown hash falls back to #/home', async () => {

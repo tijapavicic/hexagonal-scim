@@ -247,7 +247,7 @@ export interface UpdateUserDto {
 - [x] `createPayment(body: CreatePaymentDto)` → `PaymentDto`
 - [x] Throw typed `ApiHttpError` on non-2xx.
 
-### 8.2 – DTO types `src/types/payment.dto.ts`
+### 8.2 – DTO types `src/types/payment.dto.ts` ✅
 
 ```typescript
 export interface PaymentDto {
@@ -267,18 +267,24 @@ export interface CreatePaymentDto {
 }
 ```
 
-### 8.3 – `pages/payments-page.ts` component
+#### Implementation notes
 
-- [ ] Paginated table: ID, Amount, Currency, Status, User ID, Created At, Actions.
-- [ ] Shared `<pagination-bar>` component.
-- [ ] **Create Payment button** (all authenticated users):
-  - Form fields: amount (number > 0), currency (select: EUR / USD / GBP), status (`PENDING` default), userId (optional).
-  - Client-side: amount must be > 0; currency must not be empty.
-  - `POST /api/v1/payments` → on success: prepend to list, show toast.
-- [ ] **View Detail** on row click:
-  - `GET /api/v1/payments/{id}` → expand inline detail row with all fields.
-- [ ] No delete / edit (not exposed by backend; UI makes this explicit).
-- [ ] Empty state + error state.
+- Added `PaymentDto` to mirror the backend payment read model (`id`, `amount`, `currency`, `status`, `userId`, `createdAt`).
+- Added `CreatePaymentDto` for POST payload typing (`amount`, `currency`, `status`, optional `userId`).
+- Kept `amount` as `string` to avoid frontend precision loss when handling backend `BigDecimal` values.
+
+### 8.3 – `pages/payments-page.ts` component ✅
+
+- [x] Paginated table: ID, Amount, Currency, Status, User ID, Created At, Actions.
+- [x] Shared `<pagination-bar>` component.
+- [x] **Create Payment button** (all authenticated users):
+  - [x] Form fields: amount (number > 0), currency (select: EUR / USD / GBP), status (`PENDING` default), userId (optional).
+  - [x] Client-side validation: amount must be > 0 and currency/status are required.
+  - [x] `POST /api/v1/payments` wired with success toast + list refresh.
+- [x] **View Detail** on row action click:
+  - [x] `GET /api/v1/payments/{id}` expands inline detail row with all fields.
+- [x] No delete / edit actions exposed.
+- [x] Empty state + error state.
 
 **Files created**: `api/payments.ts`, `types/payment.dto.ts`, `pages/payments-page.ts`  
 **Tests**: unit – API client functions; component – table render, create form validation.
@@ -381,7 +387,7 @@ export interface CreatePaymentDto {
 | `src/components/shared/pagination-bar.ts` | 7 | ✅ done |
 | `src/api/payments.ts` | 8 | ✅ done |
 | `src/types/payment.dto.ts` | 8 | ✅ done |
-| `src/components/pages/payments-page.ts` | 8 | ⬜ todo |
+| `src/components/pages/payments-page.ts` | 8 | ✅ done |
 | `e2e/users-crud.spec.ts` | 10 | ⬜ todo |
 | `e2e/payments.spec.ts` | 10 | ⬜ todo |
 

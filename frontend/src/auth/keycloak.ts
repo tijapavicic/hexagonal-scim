@@ -79,11 +79,13 @@ function classifyAuthError(error: unknown): AuthErrorDetails {
     lower.includes('login_required') ||
     lower.includes('session') ||
     lower.includes('token is not active') ||
-    lower.includes('refresh token')
+    lower.includes('refresh token') ||
+    lower.includes('invalid refresh token') ||
+    lower.includes('invalid_token')
   ) {
     return {
       reason: 'session_timeout',
-      message: 'Session timed out. Please sign in again.',
+      message: 'Session timed out or refresh token is invalid. Please sign in again.',
       cause: error,
     };
   }
@@ -151,7 +153,19 @@ export function initAuth(): Promise<boolean> {
           refreshTimer = window.setInterval(() => {
             keycloak
               .updateToken(30)
-              .catch((error) => emit('onAuthError', classifyAuthError(error)));
+              .catch((error) => {
+                // Log token refresh errors but don't fatally stop the app
+                const details = classifyAuthError(error);
+                console.warn('Token refresh failed:', details);
+                emit('onAuthError', details);
+
+                // If token is invalid/expired, force re-authentication
+                if (details.reason === 'session_timeout' ||
+                    (error instanceof Error && error.message?.includes('Invalid refresh token'))) {
+                  console.info('Refresh token invalid, redirecting to login');
+                  void keycloak.logout({ redirectUri: window.location.origin });
+                }
+              });
           }, 60_000);
           // Bind beforeunload event to logout when browser is closed
           bindBeforeUnloadEvent();

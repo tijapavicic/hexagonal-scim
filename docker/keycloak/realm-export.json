@@ -11,7 +11,12 @@
   "bruteForceProtected": true,
   "accessTokenLifespan": 300,
   "accessTokenLifespanForImplicitFlow": 900,
+  "offlineSessionMaxLifespan": 7776000,
+  "refreshTokenMaxReuse": 0,
   "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespanRememberMe": 604800,
+  "ssoSessionIdleTimeoutRememberMe": 604800,
 
   "roles": {
     "realm": [
@@ -42,6 +47,13 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300",
+        "client.offline.session.idle.timeout": "7776000",
+        "client.offline.session.max.lifespan": "7776000",
+        "client.session.idle.timeout": "1800",
+        "client.session.max.lifespan": "36000"
+      },
       "redirectUris": [
         "http://localhost:3000/*",
         "https://localhost:3000/*",
@@ -90,6 +102,22 @@
         }
       ],
       "realmRoles": ["user"]
+    },
+    {
+      "username": "test",
+      "email": "test@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Test123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user", "admin"]
     },
     {
       "username": "adminuser",

@@ -1,3 +1,5 @@
+import { MODAL_DIALOG_STYLES } from './modal-dialog.styles';
+
 /**
  * <modal-dialog> — accessible modal with slot-based body.
  *
@@ -116,78 +118,8 @@ export class ModalDialogElement extends HTMLElement {
     const isDanger = confirmLabel === 'Delete';
 
     this.shadowRoot!.innerHTML = `
-      <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :host { font-family: system-ui, sans-serif; }
-        .overlay {
-          display: ${isOpen ? 'flex' : 'none'};
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.45);
-          z-index: 1000;
-          align-items: center;
-          justify-content: center;
-        }
-        .modal {
-          background: #fff;
-          border-radius: 10px;
-          box-shadow: 0 8px 40px rgba(0,0,0,0.2);
-          width: 500px;
-          max-width: 95vw;
-          max-height: 90vh;
-          display: flex;
-          flex-direction: column;
-        }
-        .modal-header {
-          padding: 16px 20px;
-          border-bottom: 1px solid #e5e7eb;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .modal-header h3 { font-size: 16px; font-weight: 600; color: #111827; }
-        .close-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 18px;
-          color: #6b7280;
-          padding: 4px 6px;
-          line-height: 1;
-          border-radius: 4px;
-          transition: color 0.12s, background 0.12s;
-        }
-        .close-btn:hover { color: #111827; background: #f3f4f6; }
-        .close-btn:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }
-        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
-        .modal-footer {
-          padding: 12px 20px;
-          border-top: 1px solid #e5e7eb;
-          display: flex;
-          justify-content: flex-end;
-          gap: 8px;
-        }
-        .btn {
-          padding: 8px 18px;
-          border-radius: 6px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.12s;
-        }
-        .btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
-        .btn-secondary:hover { background: #f9fafb; }
-        .btn-secondary:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }
-        /* WCAG AA: white on #4338ca → 7.0 : 1 */
-        .btn-primary { background: #4338ca; color: #fff; border: none; }
-        .btn-primary:hover { background: #3730a3; }
-        .btn-primary:focus-visible { outline: 3px solid #818cf8; outline-offset: 2px; }
-        /* WCAG AA: white on #b91c1c → 5.9 : 1 */
-        .btn-danger  { background: #b91c1c; color: #fff; border: none; }
-        .btn-danger:hover  { background: #991b1b; }
-        .btn-danger:focus-visible  { outline: 3px solid #f87171; outline-offset: 2px; }
-      </style>
-      <div class="overlay" id="overlay">
+      <style>${MODAL_DIALOG_STYLES}</style>
+      <div class="overlay ${isOpen ? 'open' : ''}" id="overlay">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
           <div class="modal-header">
             <h3 id="modal-title">${title}</h3>

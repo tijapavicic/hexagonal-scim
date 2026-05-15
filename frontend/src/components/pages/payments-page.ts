@@ -243,20 +243,20 @@ class PaymentsPageElement extends HTMLElement {
         <form id="payment-form" class="form-grid" autocomplete="off">
 
           <div class="field">
-            <label for="p-productId">Product <span style="color:#b91c1c">*</span></label>
+            <label for="p-productId">Product <span class="req">*</span></label>
             <select id="p-productId" name="productId" required>
               ${this.productOptions()}
             </select>
           </div>
 
           <div class="field">
-            <label for="p-quantity">Quantity <span style="color:#b91c1c">*</span></label>
+            <label for="p-quantity">Quantity <span class="req">*</span></label>
             <input id="p-quantity" type="number" name="quantity" min="1"
                    value="${this.formValues.quantity}" placeholder="e.g. 1" required>
           </div>
 
           <div class="field">
-            <label for="p-paymentMethod">Payment Method <span style="color:#b91c1c">*</span></label>
+            <label for="p-paymentMethod">Payment Method <span class="req">*</span></label>
             <select id="p-paymentMethod" name="paymentMethod" required>
               ${['BANK_ACCOUNT', 'PAYPAL', 'IDEAL']
                 .map((m) => `<option value="${m}" ${this.formValues.paymentMethod === m ? 'selected' : ''}>${m.replace('_', ' ')}</option>`)
@@ -265,7 +265,7 @@ class PaymentsPageElement extends HTMLElement {
           </div>
 
           <div class="field">
-            <label for="p-currency">Currency <span style="color:#b91c1c">*</span></label>
+            <label for="p-currency">Currency <span class="req">*</span></label>
             <select id="p-currency" name="currency" required>
               ${['EUR', 'USD']
                 .map((c) => `<option value="${c}" ${this.formValues.currency === c ? 'selected' : ''}>${c}</option>`)
@@ -273,7 +273,7 @@ class PaymentsPageElement extends HTMLElement {
             </select>
           </div>
 
-          <p style="font-size:13px;color:#6b7280;margin-top:4px;">
+          <p class="form-hint">
             Optional: provide your Account ID to debit it on success.
             Your user is identified automatically from your session.
           </p>

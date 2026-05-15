@@ -7,6 +7,11 @@ import {
   onAuthEvent,
   type AuthErrorDetails,
 } from '../auth/keycloak';
+import {
+  SCIM_APP_NOT_FOUND_STYLES,
+  SCIM_APP_SHELL_STYLES,
+  SCIM_APP_STATUS_STYLES,
+} from './scim-app.styles';
 import './pages/home-page';
 import './pages/users-page';
 import './pages/payments-page';
@@ -17,56 +22,6 @@ const VALID_ROUTES: readonly Route[] = ['#/home', '#/users', '#/payments', '#/no
 function normalizeRoute(raw: string): Route {
   return (VALID_ROUTES as readonly string[]).includes(raw) ? (raw as Route) : '#/not-found';
 }
-
-const SHELL_STYLES = `
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :host { display: block; min-height: 100vh; font-family: system-ui, sans-serif; }
-  .topbar {
-    background: #1a1a2e;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    height: 56px;
-    gap: 16px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .topbar-brand { font-size: 17px; font-weight: 700; margin-right: 8px; white-space: nowrap; }
-  nav { display: flex; gap: 4px; flex: 1; }
-  nav a {
-    color: rgba(255,255,255,0.75);
-    text-decoration: none;
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: background 0.15s, color 0.15s;
-  }
-  nav a:hover { background: rgba(255,255,255,0.1); color: #fff; }
-  nav a.active { background: #fff; color: #1a1a2e; font-weight: 600; }
-  nav a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  .profile-chip {
-    font-size: 12px;
-    color: rgba(255,255,255,0.85);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .logout-btn {
-    padding: 6px 14px;
-    border: 1px solid rgba(255,255,255,0.35);
-    border-radius: 6px;
-    background: transparent;
-    color: #fff;
-    cursor: pointer;
-    font-size: 13px;
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-  .logout-btn:hover { background: rgba(255,255,255,0.12); }
-  .logout-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  #page-content { padding: 24px; background: #f8f9fa; min-height: calc(100vh - 56px); }
-`;
 
 class ScimAppElement extends HTMLElement {
   private bound = false;
@@ -196,7 +151,7 @@ class ScimAppElement extends HTMLElement {
     const profile = getAuthProfile();
 
     this.innerHTML = `
-      <style>${SHELL_STYLES}</style>
+      <style>${SCIM_APP_SHELL_STYLES}</style>
       <div class="topbar">
         <span class="topbar-brand">Hexagonal SCIM</span>
         <nav>
@@ -250,45 +205,37 @@ class ScimAppElement extends HTMLElement {
 
   private renderNotFound(container: HTMLElement): void {
     container.innerHTML = `
-      <div style="
-        font-family:system-ui,sans-serif;
-        max-width:520px;margin:72px auto;padding:0 16px;text-align:center;
-      ">
-        <div style="font-size:64px;margin-bottom:16px;">404</div>
-        <h2 style="font-size:22px;font-weight:700;color:#111827;margin-bottom:8px;">
-          Page Not Found
-        </h2>
-        <p style="color:#6b7280;font-size:14px;margin-bottom:24px;">
+      <style>${SCIM_APP_NOT_FOUND_STYLES}</style>
+      <div class="nf-wrap">
+        <div class="nf-code">404</div>
+        <h2 class="nf-title">Page Not Found</h2>
+        <p class="nf-text">
           The page you're looking for doesn't exist or has been moved.
         </p>
-        <a href="#/home"
-           style="
-             display:inline-block;padding:10px 20px;
-             background:#4338ca;color:#fff;border-radius:6px;
-             text-decoration:none;font-size:14px;font-weight:600;
-           "
-        >\u2190 Go to Home</a>
+        <a href="#/home" class="nf-link">&larr; Go to Home</a>
       </div>`;
   }
 
   private renderLoading(): void {
     this.innerHTML = `
-      <main style="font-family: system-ui, sans-serif; max-width: 900px; margin: 48px auto; padding: 0 16px;">
-        <h1 style="margin-bottom: 8px;">Hexagonal SCIM</h1>
-        <p style="margin-top: 0; color: #4b5563;">Connecting to Keycloak login...</p>
+      <style>${SCIM_APP_STATUS_STYLES}</style>
+      <main class="status-wrap">
+        <h1 class="status-title">Hexagonal SCIM</h1>
+        <p class="status-message">Connecting to Keycloak login...</p>
       </main>
     `;
   }
 
   private renderError(): void {
     this.innerHTML = `
-      <main style="font-family: system-ui, sans-serif; max-width: 900px; margin: 48px auto; padding: 0 16px;">
-        <h1 style="margin-bottom: 8px;">Hexagonal SCIM</h1>
-        <p style="margin-top: 0; color: #b91c1c;">${this.errorCopy(this.authError)}</p>
+      <style>${SCIM_APP_STATUS_STYLES}</style>
+      <main class="status-wrap">
+        <h1 class="status-title">Hexagonal SCIM</h1>
+        <p class="status-message error">${this.errorCopy(this.authError)}</p>
         <button
           type="button"
           data-action="retry-login"
-          style="padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 8px; background: #ffffff; cursor: pointer;"
+          class="status-btn"
         >
           Sign in again
         </button>

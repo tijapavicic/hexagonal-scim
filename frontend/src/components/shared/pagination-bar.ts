@@ -1,3 +1,5 @@
+import { PAGINATION_BAR_STYLES } from './pagination-bar.styles';
+
 /**
  * <pagination-bar> — prev/next with page-size selector.
  *
@@ -42,37 +44,7 @@ export class PaginationBarElement extends HTMLElement {
     const { page, size, hasMore } = this;
 
     this.shadowRoot!.innerHTML = `
-      <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :host {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 0;
-          font-family: system-ui, sans-serif;
-          font-size: 13px;
-        }
-        button {
-          padding: 6px 14px;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          background: #fff;
-          cursor: pointer;
-          font-size: 13px;
-          transition: background 0.12s;
-        }
-        button:not(:disabled):hover { background: #f3f4f6; }
-        button:disabled { opacity: 0.45; cursor: default; }
-        .info { color: #4b5563; }
-        select {
-          padding: 5px 8px;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 13px;
-          background: #fff;
-          cursor: pointer;
-        }
-      </style>
+      <style>${PAGINATION_BAR_STYLES}</style>
       <button id="prev" ${page === 0 ? 'disabled' : ''}>← Prev</button>
       <span class="info">Page ${page + 1}</span>
       <button id="next" ${!hasMore ? 'disabled' : ''}>Next →</button>

@@ -186,7 +186,7 @@ class UsersPageElement extends HTMLElement {
       return `<modal-dialog id="delete-modal" title="Confirm Delete" confirm-label="Delete"></modal-dialog>`;
     const { user } = this.modal;
     return `<modal-dialog id="delete-modal" title="Confirm Delete" confirm-label="Delete" open>
-      <p style="font-family:system-ui,sans-serif;font-size:14px;color:#374151;">
+      <p class="modal-help">
         Delete user <strong>${user.username}</strong>? This action cannot be undone.</p>
       </modal-dialog>`;
   }

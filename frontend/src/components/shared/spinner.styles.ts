@@ -6,11 +6,11 @@
 
 export const SPINNER_STYLES = `
 .spinner{
-  width:28px;height:28px;
-  border:3px solid #e5e7eb;
-  border-top-color:#4f46e5;
+  width:30px;height:30px;
+  border:3px solid color-mix(in srgb,var(--scim-primary,#2563eb) 20%, #fff);
+  border-top-color:var(--scim-primary,#2563eb);
   border-radius:50%;
-  animation:spin .7s linear infinite;
+  animation:spin .9s linear infinite;
   margin:0 auto 10px;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -20,6 +20,9 @@ export const SPINNER_STYLES = `
   color:#6b7280;
   font-family:system-ui,sans-serif;
   font-size:14px;
+}
+@media (prefers-reduced-motion: reduce){
+  .spinner{animation-duration:1.6s}
 }
 `;
 

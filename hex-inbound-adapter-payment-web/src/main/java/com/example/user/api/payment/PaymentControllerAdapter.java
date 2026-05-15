@@ -1,12 +1,16 @@
 package com.example.user.api.payment;
 
+import com.example.user.api.payment.config.ApiPaginationProperties;
 import com.example.user.api.payment.dto.CreatePaymentRequest;
+import com.example.user.api.payment.dto.PagedPaymentResponse;
 import com.example.user.api.payment.dto.PaymentResponse;
 import com.example.user.model.Payment;
+import com.example.user.model.PagedPayments;
 import com.example.user.port.in.GetAllPaymentsPort;
 import com.example.user.port.in.GetPaymentPort;
 import com.example.user.port.in.InitiatePaymentPort;
 import com.example.user.port.in.ResolvePayerPort;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -16,10 +20,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -29,17 +32,20 @@ public class PaymentControllerAdapter {
     private final GetPaymentPort getPaymentPort;
     private final GetAllPaymentsPort getAllPaymentsPort;
     private final ResolvePayerPort resolvePayerPort;
+    private final ApiPaginationProperties apiPaginationProperties;
 
     public PaymentControllerAdapter(
             InitiatePaymentPort initiatePaymentPort,
             GetPaymentPort getPaymentPort,
             GetAllPaymentsPort getAllPaymentsPort,
-            ResolvePayerPort resolvePayerPort
+            ResolvePayerPort resolvePayerPort,
+            ApiPaginationProperties apiPaginationProperties
     ) {
         this.initiatePaymentPort = initiatePaymentPort;
         this.getPaymentPort = getPaymentPort;
         this.getAllPaymentsPort = getAllPaymentsPort;
         this.resolvePayerPort = resolvePayerPort;
+        this.apiPaginationProperties = apiPaginationProperties;
     }
 
     /**
@@ -74,8 +80,32 @@ public class PaymentControllerAdapter {
     }
 
     @GetMapping
-    public List<PaymentResponse> getAll() {
-        return getAllPaymentsPort.getAll().stream().map(this::toResponse).toList();
+    public PagedPaymentResponse getAll(
+            @Parameter(description = "Zero-indexed page number (uses configured default when absent)")
+            @RequestParam(name = "page", required = false) Integer page,
+
+            @Parameter(description = "Items per page, max 100 (uses configured default when absent)")
+            @RequestParam(name = "size", required = false) Integer size,
+
+            @Parameter(description = "Set to `false` to return ALL payments without paging")
+            @RequestParam(name = "pageable", required = false) Boolean pageable
+    ) {
+        int effectivePage = page != null ? page : apiPaginationProperties.getDefaultPage();
+        int effectiveSize = size != null ? size : apiPaginationProperties.getDefaultSize();
+        boolean effectivePageable = pageable != null ? pageable : apiPaginationProperties.isDefaultPageable();
+
+        PagedPayments pagedPayments = getAllPaymentsPort.getAll(effectivePage, effectiveSize, effectivePageable);
+        return new PagedPaymentResponse(
+                pagedPayments.content().stream()
+                        .map(this::toResponse)
+                        .toList(),
+                pagedPayments.pageNumber(),
+                pagedPayments.pageSize(),
+                pagedPayments.totalElements(),
+                pagedPayments.totalPages(),
+                pagedPayments.pageNumber() < pagedPayments.totalPages() - 1,
+                pagedPayments.pageNumber() > 0
+        );
     }
 
     @GetMapping("/{id}")
@@ -111,3 +141,5 @@ public class PaymentControllerAdapter {
         );
     }
 }
+
+

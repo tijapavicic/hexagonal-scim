@@ -52,7 +52,17 @@ public class PaymentConfig {
 
     @Bean
     GetAllPaymentsPort getAllPaymentsPort(PaymentService paymentServiceBean) {
-        return paymentServiceBean::getAll;
+        return new GetAllPaymentsPort() {
+            @Override
+            public java.util.List<com.example.user.model.Payment> getAll() {
+                return paymentServiceBean.getAll();
+            }
+
+            @Override
+            public com.example.user.model.PagedPayments getAll(int page, int size, boolean pageable) {
+                return paymentServiceBean.getAll(page, size, pageable);
+            }
+        };
     }
 
     /**

@@ -2,6 +2,7 @@ package com.example.user.core;
 
 import com.example.user.model.BaseCatHouse;
 import com.example.user.model.Payment;
+import com.example.user.model.PagedPayments;
 import com.example.user.model.PaymentMethod;
 import com.example.user.model.PaymentStatus;
 import com.example.user.model.Product;
@@ -155,6 +156,24 @@ public class PaymentService implements InitiatePaymentPort, GetPaymentPort, GetA
     @Override
     public List<Payment> getAll() {
         return paymentRepositoryPort.findAll();
+    }
+
+    @Override
+    public PagedPayments getAll(int page, int size, boolean pageable) {
+        List<Payment> allPayments = paymentRepositoryPort.findAll();
+
+        if (!pageable) {
+            return new PagedPayments(allPayments, 0, allPayments.size(), allPayments.size(), 1);
+        }
+
+        long totalElements = allPayments.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int startIndex = page * size;
+        int endIndex = Math.min(startIndex + size, (int) totalElements);
+
+        List<Payment> pageContent = allPayments.subList(startIndex, endIndex);
+
+        return new PagedPayments(pageContent, page, size, totalElements, totalPages);
     }
 
     private String resolveChargeCurrency(String requestedCurrency, String productCurrency) {

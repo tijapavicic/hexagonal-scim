@@ -117,17 +117,11 @@ class ScimAppElement extends HTMLElement {
 
   private async bootstrap(): Promise<void> {
     try {
-      const authenticated = await initAuth();
+      await initAuth();
 
-      if (!authenticated) {
-        this.authError = {
-          reason: 'session_timeout',
-          message: 'Session timed out. Please sign in again.',
-        };
-        this.renderError();
-        this.bindErrorActions();
-        return;
-      }
+      // If we reach here, authentication was successful (either existing session found or login redirect handled).
+      // Note: if no session existed, initAuth() will redirect to login, so this code won't execute until
+      // the user returns from Keycloak with an auth code.
 
       this.authError = null;
       this.renderShell();

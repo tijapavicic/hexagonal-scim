@@ -136,19 +136,32 @@ function bindBeforeUnloadEvent(): void {
 
 /**
  * Initializes redirect-based login exactly once for the browser session.
+ * Uses 'check-sso' to detect existing sessions without forcing re-authentication,
+ * which avoids the "already_logged_in" error when a user is already authenticated.
  */
 export function initAuth(): Promise<boolean> {
   bindLifecycleEvents();
 
   if (!initPromise) {
-    initPromise = keycloak
-      .init({
-        onLoad: 'login-required',
-        pkceMethod: 'S256',
-        checkLoginIframe: false,
-      })
-      .then((authenticated) => {
-        if (authenticated && refreshTimer === null) {
+    initPromise = (async () => {
+      try {
+        const authenticated = await keycloak.init({
+          onLoad: 'check-sso',
+          pkceMethod: 'S256',
+          checkLoginIframe: false,
+        });
+
+        // If no existing session is found, redirect to login
+        if (!authenticated) {
+          console.info('No existing session detected, redirecting to login');
+          await keycloak.login();
+          // The login() call redirects the browser, so this line won't be reached
+          // until the user returns from Keycloak with an auth code.
+          return true;
+        }
+
+        // User is authenticated; set up token refresh
+        if (refreshTimer === null) {
           // Keep the token fresh so next API work can reuse the same session.
           refreshTimer = window.setInterval(() => {
             keycloak
@@ -171,13 +184,13 @@ export function initAuth(): Promise<boolean> {
           bindBeforeUnloadEvent();
         }
 
-        return authenticated;
-      })
-      .catch((error) => {
+        return true;
+      } catch (error) {
         const details = classifyAuthError(error);
         emit('onAuthError', details);
         throw details;
-      });
+      }
+    })();
   }
 
   return initPromise;

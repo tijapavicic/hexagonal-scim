@@ -15,6 +15,20 @@ export interface PaymentDto {
 }
 
 /**
+ * Paginated payment response from backend GET /api/v1/payments endpoint.
+ * Matches the PagedPaymentResponse Java record structure.
+ */
+export interface PagedPaymentResponse {
+  content: PaymentDto[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+/**
  * Body for POST /api/v1/payments (self-service product purchase).
  *
  * - `productId`, `quantity`, `paymentMethod`, `currency` are required.

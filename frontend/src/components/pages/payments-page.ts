@@ -7,6 +7,9 @@ import '../shared/notification-bar';
 import '../shared/pagination-bar';
 import '../shared/modal-dialog';
 import { PAYMENTS_PAGE_STYLES } from './payments-page.styles';
+import { createLogger } from '../../logger/logger';
+
+const logger = createLogger('PaymentsPage');
 
 interface PaymentFormValues {
   productId: string;
@@ -53,13 +56,18 @@ class PaymentsPageElement extends HTMLElement {
 
   private async loadProducts(): Promise<void> {
     try {
+      logger.info('Loading products');
       this.products = await listProducts();
       // Pre-select the first product if none is selected
       if (this.products.length > 0 && !this.formValues.productId) {
         this.formValues.productId = String(this.products[0]!.id);
       }
-    } catch {
+      logger.info('Products loaded', { count: this.products.length });
+    } catch (error) {
       // Products are a convenience — failure does not block the page
+      logger.warn('Failed to load products', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       this.products = [];
     }
   }
@@ -70,12 +78,23 @@ class PaymentsPageElement extends HTMLElement {
     this.render();
 
     try {
+      logger.info('Loading payments', { page: this.page, size: this.size });
       const result = await listPayments(this.page, this.size);
       this.payments = result;
       this.hasMore = result.length === this.size;
+      logger.info('Payments loaded successfully', {
+        count: result.length,
+        page: this.page,
+        hasMore: this.hasMore,
+      });
     } catch (e) {
       this.payments = [];
       this.listError = e instanceof Error ? e.message : 'Failed to load payments.';
+      logger.error('Failed to load payments', {
+        page: this.page,
+        size: this.size,
+        error: this.listError,
+      });
     } finally {
       this.loading = false;
       this.render();

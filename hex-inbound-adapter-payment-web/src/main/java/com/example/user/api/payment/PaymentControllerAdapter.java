@@ -12,6 +12,8 @@ import com.example.user.port.in.InitiatePaymentPort;
 import com.example.user.port.in.ResolvePayerPort;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,6 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/payments")
 public class PaymentControllerAdapter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PaymentControllerAdapter.class);
 
     private final InitiatePaymentPort initiatePaymentPort;
     private final GetPaymentPort getPaymentPort;
@@ -59,10 +63,15 @@ public class PaymentControllerAdapter {
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest request,
                                   Authentication authentication) {
+        LOG.info("Creating payment: productId={}, quantity={}, paymentMethod={}, currency={}",
+                request.productId(), request.quantity(), request.paymentMethod(), request.currency());
+
         Long resolvedUserId = resolveUserId(authentication);
 
         // If the caller wants to debit an account, the user must be resolvable.
         if (request.accountId() != null && resolvedUserId == null) {
+            LOG.warn("Payment creation failed: user not resolvable from email claim, accountId={}",
+                    request.accountId());
             throw new IllegalArgumentException(
                     "Your user account could not be identified from the session. " +
                     "Ensure your profile email is registered as a system user.");
@@ -76,6 +85,7 @@ public class PaymentControllerAdapter {
                 request.paymentMethod(),
                 request.currency()
         );
+        LOG.info("Payment created successfully: id={}, status={}", payment.id(), payment.status());
         return toResponse(payment);
     }
 
@@ -94,7 +104,15 @@ public class PaymentControllerAdapter {
         int effectiveSize = size != null ? size : apiPaginationProperties.getDefaultSize();
         boolean effectivePageable = pageable != null ? pageable : apiPaginationProperties.isDefaultPageable();
 
+        LOG.info("Fetching payments: page={}, size={}, pageable={}",
+                effectivePage, effectiveSize, effectivePageable);
+
         PagedPayments pagedPayments = getAllPaymentsPort.getAll(effectivePage, effectiveSize, effectivePageable);
+
+        LOG.info("Payments fetched: totalElements={}, totalPages={}, currentPage={}, itemCount={}",
+                pagedPayments.totalElements(), pagedPayments.totalPages(),
+                pagedPayments.pageNumber(), pagedPayments.content().size());
+
         return new PagedPaymentResponse(
                 pagedPayments.content().stream()
                         .map(this::toResponse)
@@ -110,7 +128,10 @@ public class PaymentControllerAdapter {
 
     @GetMapping("/{id}")
     public PaymentResponse getById(@PathVariable("id") Long id) {
-        return toResponse(getPaymentPort.getById(id));
+        LOG.info("Fetching payment by id: {}", id);
+        PaymentResponse response = toResponse(getPaymentPort.getById(id));
+        LOG.info("Payment fetched: id={}, status={}", response.id(), response.status());
+        return response;
     }
 
     /**

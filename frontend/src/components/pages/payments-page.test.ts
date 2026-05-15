@@ -1,15 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listPaymentsMock, getPaymentByIdMock, createPaymentMock } = vi.hoisted(() => ({
+const { listPaymentsMock, getPaymentByIdMock, createPaymentMock, authProfileRef } = vi.hoisted(() => ({
   listPaymentsMock: vi.fn(),
   getPaymentByIdMock: vi.fn(),
   createPaymentMock: vi.fn(),
+  authProfileRef: {
+    preferredUsername: 'testuser',
+    realmRoles: ['ROLE_USER'] as string[],
+    tokenExpiresAt: null as string | null,
+  },
 }));
 
 vi.mock('../../api/payments', () => ({
   listPayments: listPaymentsMock,
   getPaymentById: getPaymentByIdMock,
   createPayment: createPaymentMock,
+}));
+
+vi.mock('../../auth/keycloak', () => ({
+  getAuthProfile: () => authProfileRef,
 }));
 
 vi.mock('../shared/notification-bar', () => ({}));
@@ -45,6 +54,8 @@ describe('payments-page component', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
+    // Default: ROLE_USER (read-only access)
+    authProfileRef.realmRoles = ['ROLE_USER'];
   });
 
   afterEach(() => {
@@ -105,6 +116,7 @@ describe('payments-page component', () => {
   });
 
   it('opens create modal and submits valid create payload', async () => {
+    authProfileRef.realmRoles = ['ROLE_ADMIN'];
     listPaymentsMock.mockResolvedValue([paymentA]);
     createPaymentMock.mockResolvedValue({ ...paymentA, id: 99 });
     const el = mount();
@@ -134,6 +146,14 @@ describe('payments-page component', () => {
       status: 'PENDING',
       userId: 7,
     });
+  });
+
+  it('hides create button for ROLE_USER', async () => {
+    // authProfileRef.realmRoles is already ['ROLE_USER'] from beforeEach
+    listPaymentsMock.mockResolvedValue([paymentA]);
+    const el = mount();
+    await flushPromises();
+    expect(el.querySelector('[data-action="create"]')).toBeNull();
   });
 
   it('renders pagination-bar after successful list load', async () => {

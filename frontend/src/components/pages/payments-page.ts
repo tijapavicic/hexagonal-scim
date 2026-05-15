@@ -5,6 +5,7 @@ import '../shared/notification-bar';
 import '../shared/pagination-bar';
 import '../shared/modal-dialog';
 import { PAYMENTS_PAGE_STYLES } from './payments-page.styles';
+import { getAuthProfile } from '../../auth/keycloak';
 
 interface PaymentFormValues {
   amount: string;
@@ -37,8 +38,17 @@ class PaymentsPageElement extends HTMLElement {
   private submitting = false;
 
   private toastEl!: NotificationBarElement;
+  private isAdmin = false;
+
+  private hasAdminRole(realmRoles: string[]): boolean {
+    return realmRoles.some((role) => {
+      const normalized = role.toUpperCase();
+      return normalized === 'ADMIN' || normalized === 'ROLE_ADMIN';
+    });
+  }
 
   connectedCallback(): void {
+    this.isAdmin = this.hasAdminRole(getAuthProfile().realmRoles);
     this.innerHTML = '<notification-bar id="toast"></notification-bar><div id="main"></div>';
     this.toastEl = this.querySelector('#toast') as NotificationBarElement;
     this.render();
@@ -234,7 +244,9 @@ class PaymentsPageElement extends HTMLElement {
     return `
       <div class="page-header">
         <h2>Payments</h2>
-        <button class="btn btn-primary" data-action="create">+ Create Payment</button>
+        ${this.isAdmin
+          ? `<button class="btn btn-primary" data-action="create">+ Create Payment</button>`
+          : ''}
       </div>
 
       <div class="card">${this.tableContent()}</div>
@@ -243,7 +255,7 @@ class PaymentsPageElement extends HTMLElement {
         ? `<pagination-bar page="${this.page}" size="${this.size}" has-more="${this.hasMore}"></pagination-bar>`
         : ''}
 
-      ${this.createModalTemplate()}
+      ${this.isAdmin ? this.createModalTemplate() : ''}
     `;
   }
 

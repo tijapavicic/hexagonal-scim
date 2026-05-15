@@ -274,14 +274,14 @@ class PaymentsPageElement extends HTMLElement {
                    value="${this.formValues.quantity}" placeholder="e.g. 1" required>
           </div>
 
-          <div class="field">
-            <label for="p-paymentMethod">Payment Method <span class="req">*</span></label>
-            <select id="p-paymentMethod" name="paymentMethod" required>
-              ${['BANK_ACCOUNT', 'PAYPAL', 'IDEAL']
-                .map((m) => `<option value="${m}" ${this.formValues.paymentMethod === m ? 'selected' : ''}>${m.replace('_', ' ')}</option>`)
-                .join('')}
-            </select>
-          </div>
+           <div class="field">
+             <label for="p-paymentMethod">Payment Method <span class="req">*</span></label>
+             <select id="p-paymentMethod" name="paymentMethod" required>
+               ${['BANK_ACCOUNT', 'PAYPAL', 'IDEAL', 'CREDIT_CARD']
+                 .map((m) => `<option value="${m}" ${this.formValues.paymentMethod === m ? 'selected' : ''}>${m.replace('_', ' ')}</option>`)
+                 .join('')}
+             </select>
+           </div>
 
           <div class="field">
             <label for="p-currency">Currency <span class="req">*</span></label>

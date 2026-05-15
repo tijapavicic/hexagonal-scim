@@ -143,7 +143,7 @@ SELECT
     p.price,
     p.currency,
     'COMPLETED',
-    'CREDIT_CARD'
+    'PAYPAL'
 FROM products p
 WHERE LOWER(p.name) = LOWER('Premium CatHouse Deluxe')
 AND NOT EXISTS (
@@ -158,7 +158,7 @@ SELECT
     p.price,
     p.currency,
     'FAILED',
-    'BANK_TRANSFER'
+    'IDEAL'
 FROM products p
 WHERE LOWER(p.name) = LOWER('Digital Art License - Basic')
 AND NOT EXISTS (
@@ -188,7 +188,7 @@ SELECT
     p.price,
     p.currency,
     'CANCELLED',
-    'CREDIT_CARD'
+    'BANK_ACCOUNT'
 FROM products p
 WHERE LOWER(p.name) = LOWER('Digital Art License - Premium')
 AND NOT EXISTS (

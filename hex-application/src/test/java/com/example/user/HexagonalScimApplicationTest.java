@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Full Spring Boot context smoke tests (H2 + NoSecurityConfig — no auth required).
  *
  * <p>These tests verify end-to-end wiring: routing → controller → service → repository → H2.
- * The V3 migration seeds exactly 25 users which are used for pagination assertions.
+ * The V3 migration seeds 25 users and V10 adds 1 test user (26 total) which are used for pagination assertions.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -80,11 +80,11 @@ class HexagonalScimApplicationTest {
 
     @Test
     void getAllWithPageableFalseReturnsAllSeedData() throws Exception {
-        // V3 migration inserts exactly 25 sample users — all must be returned when pageable=false
+        // V3 migration inserts 25 sample users + V10 adds 1 test user = 26 total — all must be returned when pageable=false
         mockMvc.perform(get("/api/v1/users").param("pageable", "false"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(25))
-                .andExpect(jsonPath("$.totalElements").value(25))
+                .andExpect(jsonPath("$.content.length()").value(26))
+                .andExpect(jsonPath("$.totalElements").value(26))
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.hasNext").value(false))
                 .andExpect(jsonPath("$.hasPrevious").value(false));
@@ -92,11 +92,11 @@ class HexagonalScimApplicationTest {
 
     @Test
     void getAllDefaultReturnsFirstPageOfTen() throws Exception {
-        // Default pageable=true with size=10 must return only 10 of the 25 seeded users
+        // Default pageable=true with size=10 must return only 10 of the 26 seeded users (25 sample + 1 test)
         mockMvc.perform(get("/api/v1/users"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(10))
-                .andExpect(jsonPath("$.totalElements").value(25))
+                .andExpect(jsonPath("$.totalElements").value(26))
                 .andExpect(jsonPath("$.pageSize").value(10))
                 .andExpect(jsonPath("$.hasNext").value(true))
                 .andExpect(jsonPath("$.hasPrevious").value(false));
@@ -108,7 +108,7 @@ class HexagonalScimApplicationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pageSize").value(3))
                 .andExpect(jsonPath("$.content.length()").value(3))
-                .andExpect(jsonPath("$.totalElements").value(25))
+                .andExpect(jsonPath("$.totalElements").value(26))
                 .andExpect(jsonPath("$.hasNext").value(true));
     }
 
@@ -133,15 +133,15 @@ class HexagonalScimApplicationTest {
 
     // ─── legacy path ─────────────────────────────────────────────────────────
 
-    @Test
-    void legacyPathReturnsDataWithDeprecationHeaders() throws Exception {
-        mockMvc.perform(get("/api/users").param("pageable", "false"))
-                .andExpect(status().isOk())
-                .andExpect(header().exists("Deprecation"))
-                .andExpect(header().exists("Sunset"))
-                .andExpect(header().exists("Link"))
-                .andExpect(jsonPath("$.content.length()").value(25));
-    }
+     @Test
+     void legacyPathReturnsDataWithDeprecationHeaders() throws Exception {
+         mockMvc.perform(get("/api/users").param("pageable", "false"))
+                 .andExpect(status().isOk())
+                 .andExpect(header().exists("Deprecation"))
+                 .andExpect(header().exists("Sunset"))
+                 .andExpect(header().exists("Link"))
+                 .andExpect(jsonPath("$.content.length()").value(26));
+     }
 
     @Test
     void createAndReadUserAccountFlow() throws Exception {

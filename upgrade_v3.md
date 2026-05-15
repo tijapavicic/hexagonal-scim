@@ -532,7 +532,7 @@ cd frontend && npm run typecheck && npm run test && npm run build
 | Risk | Severity | Notes |
 |---|---|---|
 | JWT email → system user mapping depends on existing user email records | Medium | In secured runtime, `userId` is resolved from JWT `email` using `ResolvePayerPort`. If no matching user email exists, account-debit payments are rejected with `400` and a clear message. |
-| Legacy fallback accepts `userId` only when no JWT principal is present | Medium | For local/no-security test runtime compatibility, controller falls back to request `userId` when JWT is unavailable. In secured runtime, JWT resolution takes precedence and client `userId` is ignored. |
+| Account-bound payments require JWT-based identity context | Medium | `POST /api/v1/payments` with `accountId` now requires a JWT carrying `email` that maps to an existing user. Requests without resolvable identity are rejected with `400`. |
 | `POST /api/v1/payments` allowlist is path-exact, not pattern-based | Low | If sub-paths like `/api/v1/payments/initiate` are added later, they won't inherit this allowlist automatically — must be added explicitly. This is intentional (secure by default). |
 | Only `BaseCatHouse` product can be purchased (backend enforces this) | Low | Frontend now loads products via `GET /api/v1/products` and shows a dropdown, but the backend still intentionally allows only `BaseCatHouse` in the current production phase. |
 
@@ -540,7 +540,7 @@ cd frontend && npm run typecheck && npm run test && npm run build
 
 ## 🔮 Suggested Next Steps
 
-1. **Persist Keycloak subject (`sub`) on users** — map JWT subject directly to domain user records and remove the no-security `userId` fallback.
+1. **Persist Keycloak subject (`sub`) on users** — map JWT subject directly to domain user records (instead of e-mail matching) for stronger identity linkage.
 
 2. **Enforce account ownership in payment create flow** — when `accountId` is supplied, verify it belongs to the resolved authenticated user and return `403` for cross-user attempts.
 

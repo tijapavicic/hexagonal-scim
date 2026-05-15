@@ -45,26 +45,25 @@ public class PaymentControllerAdapter {
     /**
      * Initiates a new payment.
      *
-     * <p>The {@code userId} is resolved automatically from the JWT {@code email} claim —
-     * the client never needs to supply it. If {@code accountId} is provided but the
-     * email cannot be mapped to a system user, the request is rejected with 400.
+     * <p>The payer {@code userId} is resolved from the authenticated JWT {@code email}
+     * claim only. If {@code accountId} is provided but the email cannot be mapped to a
+     * system user, the request is rejected with 400.
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest request,
                                   Authentication authentication) {
         Long resolvedUserId = resolveUserId(authentication);
-        Long effectiveUserId = resolvedUserId != null ? resolvedUserId : request.userId();
 
         // If the caller wants to debit an account, the user must be resolvable.
-        if (request.accountId() != null && effectiveUserId == null) {
+        if (request.accountId() != null && resolvedUserId == null) {
             throw new IllegalArgumentException(
                     "Your user account could not be identified from the session. " +
-                    "Provide userId (local mode) or ensure your profile email is registered.");
+                    "Ensure your profile email is registered as a system user.");
         }
 
         Payment payment = initiatePaymentPort.initiate(
-                effectiveUserId,
+                resolvedUserId,
                 request.accountId(),
                 request.productId(),
                 request.quantity(),

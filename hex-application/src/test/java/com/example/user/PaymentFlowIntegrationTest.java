@@ -1,7 +1,5 @@
 package com.example.user;
 
-import com.example.user.adapter.db.AccountEntity;
-import com.example.user.adapter.db.AccountJpaRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -10,9 +8,12 @@ import org.springframework.boot.test.autoconfigure.actuate.observability.AutoCon
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,18 +34,24 @@ class PaymentFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
-    private AccountJpaRepository accountJpaRepository;
 
     @Test
     void createPaymentInUsdAndReadBackById() throws Exception {
-        Long accountId = createFundedAccount(1L, "payment-main", new java.math.BigDecimal("500.00"));
+        long userId = 1L;
+        String email = getUserEmailViaApi(userId);
+        long accountId = createAccountViaApi(userId, "payment-main");
+
+        mockMvc.perform(post("/api/v1/users/{userId}/accounts/{accountId}/topup", userId, accountId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":500.00}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(500.00));
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/payments")
+                        .with(authenticatedUser(email))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "userId": 1,
                                   "accountId": %d,
                                   "productId": 1,
                                   "quantity": 1,
@@ -53,7 +60,7 @@ class PaymentFlowIntegrationTest {
                                 }
                                 """.formatted(accountId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.userId").value(userId))
                 .andExpect(jsonPath("$.accountId").value(accountId))
                 .andExpect(jsonPath("$.productId").value(1))
                 .andExpect(jsonPath("$.quantity").value(1))
@@ -69,7 +76,7 @@ class PaymentFlowIntegrationTest {
         mockMvc.perform(get("/api/v1/payments/{id}", paymentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(paymentId))
-                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.userId").value(userId))
                 .andExpect(jsonPath("$.accountId").value(accountId))
                 .andExpect(jsonPath("$.currency").value("USD"))
                 .andExpect(jsonPath("$.totalAmount").value(87.99));
@@ -77,13 +84,20 @@ class PaymentFlowIntegrationTest {
 
     @Test
     void createPaymentReturnsBadRequestForUnsupportedCurrency() throws Exception {
-        Long accountId = createFundedAccount(1L, "payment-gbp", new java.math.BigDecimal("500.00"));
+        long userId = 1L;
+        String email = getUserEmailViaApi(userId);
+        long accountId = createAccountViaApi(userId, "payment-gbp");
+
+        mockMvc.perform(post("/api/v1/users/{userId}/accounts/{accountId}/topup", userId, accountId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":500.00}"))
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/payments")
+                        .with(authenticatedUser(email))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "userId": 1,
                                   "accountId": %d,
                                   "productId": 1,
                                   "quantity": 1,
@@ -98,19 +112,21 @@ class PaymentFlowIntegrationTest {
 
     @Test
     void topUpThenPayReducesBalance() throws Exception {
-        long accountId = createAccountViaApi(1L, "flow-topup-pay-" + System.nanoTime());
+        long userId = 1L;
+        String email = getUserEmailViaApi(userId);
+        long accountId = createAccountViaApi(userId, "flow-topup-pay-" + System.nanoTime());
 
-        mockMvc.perform(post("/api/v1/users/1/accounts/{accountId}/topup", accountId)
+        mockMvc.perform(post("/api/v1/users/{userId}/accounts/{accountId}/topup", userId, accountId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\":100.00}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(100.00));
 
         mockMvc.perform(post("/api/v1/payments")
+                        .with(authenticatedUser(email))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "userId": 1,
                                   "accountId": %d,
                                   "productId": 1,
                                   "quantity": 1,
@@ -122,26 +138,28 @@ class PaymentFlowIntegrationTest {
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.totalAmount").value(79.99));
 
-        mockMvc.perform(get("/api/v1/users/1/accounts/{accountId}", accountId))
+        mockMvc.perform(get("/api/v1/users/{userId}/accounts/{accountId}", userId, accountId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(20.01));
     }
 
     @Test
     void insufficientFundsReturns422AndBalanceUnchanged() throws Exception {
-        long accountId = createAccountViaApi(1L, "flow-insufficient-" + System.nanoTime());
+        long userId = 1L;
+        String email = getUserEmailViaApi(userId);
+        long accountId = createAccountViaApi(userId, "flow-insufficient-" + System.nanoTime());
 
-        mockMvc.perform(post("/api/v1/users/1/accounts/{accountId}/topup", accountId)
+        mockMvc.perform(post("/api/v1/users/{userId}/accounts/{accountId}/topup", userId, accountId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"amount\":10.00}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(10.00));
 
         mockMvc.perform(post("/api/v1/payments")
+                        .with(authenticatedUser(email))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "userId": 1,
                                   "accountId": %d,
                                   "productId": 1,
                                   "quantity": 1,
@@ -152,9 +170,29 @@ class PaymentFlowIntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
 
-        mockMvc.perform(get("/api/v1/users/1/accounts/{accountId}", accountId))
+        mockMvc.perform(get("/api/v1/users/{userId}/accounts/{accountId}", userId, accountId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(10.00));
+    }
+
+    @Test
+    void accountBoundPaymentWithoutResolvableJwtEmailReturns400() throws Exception {
+        long accountId = createAccountViaApi(1L, "flow-unresolvable-" + System.nanoTime());
+
+        mockMvc.perform(post("/api/v1/payments")
+                        .with(authenticatedUser("not-found-" + System.nanoTime() + "@example.com"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "accountId": %d,
+                                  "productId": 1,
+                                  "quantity": 1,
+                                  "paymentMethod": "PAYPAL",
+                                  "currency": "EUR"
+                                }
+                                """.formatted(accountId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
     private long createAccountViaApi(Long userId, String name) throws Exception {
@@ -167,9 +205,17 @@ class PaymentFlowIntegrationTest {
         return objectMapper.readTree(createResult.getResponse().getContentAsString()).path("id").asLong();
     }
 
-    private Long createFundedAccount(Long userId, String name, java.math.BigDecimal balance) {
-        AccountEntity saved = accountJpaRepository.save(new AccountEntity(userId, name, balance));
-        return saved.getId();
+    private String getUserEmailViaApi(long userId) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/users/{id}", userId))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("email").asText();
+    }
+
+    private RequestPostProcessor authenticatedUser(String email) {
+        return jwt()
+                .jwt(jwt -> jwt.claim("email", email))
+                .authorities(new SimpleGrantedAuthority("ROLE_USER"));
     }
 }
 

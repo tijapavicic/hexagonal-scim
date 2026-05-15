@@ -53,3 +53,50 @@ export async function getJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function mutate<T>(method: string, path: string, body?: unknown): Promise<T | void> {
+  const headers = await authHeader();
+  const isJson = body !== undefined;
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      ...(isJson ? { 'Content-Type': 'application/json' } : {}),
+      Accept: 'application/json',
+      ...headers,
+    },
+    body: isJson ? JSON.stringify(body) : undefined,
+  });
+
+  if (UNAUTHORIZED_STATUSES.has(response.status)) {
+    await login();
+    throw new ApiHttpError(response.status, 'Unauthorized. Redirecting to login.');
+  }
+
+  if (!response.ok) {
+    // Try to surface server validation message
+    let serverMessage = `Request failed (${response.status}).`;
+    try {
+      const err = (await response.json()) as { message?: string };
+      if (err.message) serverMessage = err.message;
+    } catch { /* non-JSON body */ }
+    throw new ApiHttpError(response.status, serverMessage);
+  }
+
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return;
+  }
+  return (await response.json()) as T;
+}
+
+export function postJson<T>(path: string, body: unknown): Promise<T> {
+  return mutate<T>('POST', path, body) as Promise<T>;
+}
+
+export function putJson<T>(path: string, body: unknown): Promise<T> {
+  return mutate<T>('PUT', path, body) as Promise<T>;
+}
+
+export function deleteVoid(path: string): Promise<void> {
+  return mutate('DELETE', path) as Promise<void>;
+}
+

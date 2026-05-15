@@ -146,7 +146,7 @@ class PaymentsPageElement extends HTMLElement {
   }
 
   private tableContent(): string {
-    if (this.loading) return '<div class="state-msg">Loading payments...</div>';
+    if (this.loading) return '<div class="loading-state" role="status" aria-label="Loading payments"><div class="spinner" aria-hidden="true"></div>Loading payments\u2026</div>';
     if (this.listError) {
       return `<div class="state-msg error-msg">${this.listError}<br><br>
         <button class="btn btn-secondary" data-action="reload">Retry</button>

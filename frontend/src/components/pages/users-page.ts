@@ -127,7 +127,7 @@ class UsersPageElement extends HTMLElement {
   }
 
   private listContent(): string {
-    if (this.loading) return '<div class="state-msg">Loading users\u2026</div>';
+    if (this.loading) return '<div class="loading-state" role="status" aria-label="Loading users"><div class="spinner" aria-hidden="true"></div>Loading users\u2026</div>';
     if (this.listError) return `<div class="state-msg error-msg">${this.listError}<br><br>
       <button class="btn btn-secondary" data-action="reload">\u21ba Retry</button></div>`;
     if (!this.users.length) return '<div class="state-msg">No users found.</div>';

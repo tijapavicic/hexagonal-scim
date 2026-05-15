@@ -11,12 +11,55 @@
  *                    so the parent can validate/submit before closing.
  *   dialog-cancel  – user dismissed (Cancel, ✕, ESC, backdrop click);
  *                    modal removes "open" attribute automatically.
+ *
+ * Keyboard:
+ *   ESC           – cancel and close
+ *   Tab / Shift+Tab – focus trapped inside the modal while open
  */
 export class ModalDialogElement extends HTMLElement {
   static observedAttributes = ['open', 'title', 'confirm-label'];
 
+  /** The element that had focus before the modal was opened – restored on close. */
+  private previousFocus: Element | null = null;
+
+  private readonly FOCUSABLE_SELECTOR =
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), ' +
+    'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
   private readonly onKeydown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && this.hasAttribute('open')) this.cancel();
+    if (!this.hasAttribute('open')) return;
+
+    if (e.key === 'Escape') {
+      this.cancel();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusable = Array.from(
+        this.shadowRoot!.querySelectorAll<HTMLElement>(this.FOCUSABLE_SELECTOR),
+      ).filter((el) => el.offsetParent !== null || el.tagName === 'BUTTON');
+
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = this.shadowRoot!.activeElement;
+
+      if (e.shiftKey) {
+        if (active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
   };
 
   constructor() {
@@ -33,8 +76,27 @@ export class ModalDialogElement extends HTMLElement {
     document.removeEventListener('keydown', this.onKeydown);
   }
 
-  attributeChangedCallback(): void {
-    if (this.isConnected) this.render();
+  attributeChangedCallback(name: string): void {
+    if (!this.isConnected) return;
+    this.render();
+
+    if (name === 'open') {
+      if (this.hasAttribute('open')) {
+        // Save current focus so we can restore it when the modal closes.
+        this.previousFocus = document.activeElement;
+        // Move focus into the modal after the render settles.
+        requestAnimationFrame(() => {
+          const first = this.shadowRoot!.querySelector<HTMLElement>(this.FOCUSABLE_SELECTOR);
+          first?.focus();
+        });
+      } else {
+        // Restore focus to the element that triggered the modal.
+        if (this.previousFocus instanceof HTMLElement) {
+          this.previousFocus.focus();
+        }
+        this.previousFocus = null;
+      }
+    }
   }
 
   private cancel(): void {
@@ -89,11 +151,14 @@ export class ModalDialogElement extends HTMLElement {
           border: none;
           cursor: pointer;
           font-size: 18px;
-          color: #9ca3af;
-          padding: 0 4px;
+          color: #6b7280;
+          padding: 4px 6px;
           line-height: 1;
+          border-radius: 4px;
+          transition: color 0.12s, background 0.12s;
         }
-        .close-btn:hover { color: #374151; }
+        .close-btn:hover { color: #111827; background: #f3f4f6; }
+        .close-btn:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
         .modal-footer {
           padding: 12px 20px;
@@ -112,10 +177,15 @@ export class ModalDialogElement extends HTMLElement {
         }
         .btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
         .btn-secondary:hover { background: #f9fafb; }
-        .btn-primary { background: #4f46e5; color: #fff; border: none; }
-        .btn-primary:hover { background: #4338ca; }
-        .btn-danger  { background: #dc2626; color: #fff; border: none; }
-        .btn-danger:hover  { background: #b91c1c; }
+        .btn-secondary:focus-visible { outline: 3px solid #6366f1; outline-offset: 2px; }
+        /* WCAG AA: white on #4338ca → 7.0 : 1 */
+        .btn-primary { background: #4338ca; color: #fff; border: none; }
+        .btn-primary:hover { background: #3730a3; }
+        .btn-primary:focus-visible { outline: 3px solid #818cf8; outline-offset: 2px; }
+        /* WCAG AA: white on #b91c1c → 5.9 : 1 */
+        .btn-danger  { background: #b91c1c; color: #fff; border: none; }
+        .btn-danger:hover  { background: #991b1b; }
+        .btn-danger:focus-visible  { outline: 3px solid #f87171; outline-offset: 2px; }
       </style>
       <div class="overlay" id="overlay">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">

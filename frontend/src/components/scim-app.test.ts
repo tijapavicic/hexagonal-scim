@@ -150,7 +150,7 @@ describe('components/scim-app', () => {
     expect(element.querySelector('#page-content')?.innerHTML).toContain('payments-page');
   });
 
-  it('routeTo unknown hash falls back to #/home', async () => {
+  it('routeTo #/not-found renders the 404 page', async () => {
     initAuthMock.mockResolvedValue(true);
 
     await import('./scim-app');
@@ -158,11 +158,42 @@ describe('components/scim-app', () => {
     document.body.appendChild(element);
     await flushPromises();
 
-    element.routeTo('#/unknown-route');
+    element.routeTo('#/not-found');
 
-    // Window hash is updated to canonical route; no multiple active links.
+    expect(element.querySelector('#page-content')?.textContent).toContain('Page Not Found');
+    // not-found has no matching nav item → no nav link is active.
+    const active = element.querySelectorAll('.active');
+    expect(active).toHaveLength(0);
+  });
+
+  it('routeTo unknown hash redirects to #/not-found and leaves at most 1 active link', async () => {
+    initAuthMock.mockResolvedValue(true);
+
+    await import('./scim-app');
+    const element = document.createElement('scim-app') as ScimAppEl;
+    document.body.appendChild(element);
+    await flushPromises();
+
+    element.routeTo('#/totally-unknown');
+
+    // The function sets window.location.hash and returns early;
+    // no multiple active links are left over.
     const active = element.querySelectorAll('.active');
     expect(active.length).toBeLessThanOrEqual(1);
+  });
+
+  it('shows token expiry countdown in profile chip', async () => {
+    initAuthMock.mockResolvedValue(true);
+    // tokenExpiresAt is already set in beforeEach (≈ future timestamp)
+
+    await import('./scim-app');
+    const element = document.createElement('scim-app') as ScimAppEl;
+    document.body.appendChild(element);
+    await flushPromises();
+
+    const chip = element.querySelector('#profile-chip');
+    // Should contain the ⏱ indicator and minutes remaining
+    expect(chip?.textContent).toMatch(/⏱\s*\d+m/);
   });
 });
 

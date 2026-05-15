@@ -11,11 +11,11 @@ import './pages/home-page';
 import './pages/users-page';
 import './pages/payments-page';
 
-type Route = '#/home' | '#/users' | '#/payments';
-const VALID_ROUTES: readonly Route[] = ['#/home', '#/users', '#/payments'];
+type Route = '#/home' | '#/users' | '#/payments' | '#/not-found';
+const VALID_ROUTES: readonly Route[] = ['#/home', '#/users', '#/payments', '#/not-found'];
 
 function normalizeRoute(raw: string): Route {
-  return (VALID_ROUTES as readonly string[]).includes(raw) ? (raw as Route) : '#/home';
+  return (VALID_ROUTES as readonly string[]).includes(raw) ? (raw as Route) : '#/not-found';
 }
 
 const SHELL_STYLES = `
@@ -45,9 +45,10 @@ const SHELL_STYLES = `
   }
   nav a:hover { background: rgba(255,255,255,0.1); color: #fff; }
   nav a.active { background: #fff; color: #1a1a2e; font-weight: 600; }
+  nav a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .profile-chip {
     font-size: 12px;
-    color: rgba(255,255,255,0.8);
+    color: rgba(255,255,255,0.85);
     white-space: nowrap;
     flex-shrink: 0;
   }
@@ -63,6 +64,7 @@ const SHELL_STYLES = `
     transition: background 0.15s;
   }
   .logout-btn:hover { background: rgba(255,255,255,0.12); }
+  .logout-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   #page-content { padding: 24px; background: #f8f9fa; min-height: calc(100vh - 56px); }
 `;
 
@@ -70,6 +72,7 @@ class ScimAppElement extends HTMLElement {
   private bound = false;
   private unsubscribeEvents: Array<() => void> = [];
   private authError: AuthErrorDetails | null = null;
+  private countdownTimer: number | null = null;
 
   private readonly onHashChange = (): void => {
     this.routeTo(window.location.hash || '#/home');
@@ -88,19 +91,20 @@ class ScimAppElement extends HTMLElement {
     this.unsubscribeEvents = [];
     window.removeEventListener('hashchange', this.onHashChange);
     disposeAuthRefresh();
+    this.stopCountdown();
   }
 
   /** Public so tests can drive navigation directly. */
   routeTo(hash: string): void {
     const route = normalizeRoute(hash);
 
-    // Redirect unknown hashes so the URL stays canonical.
+    // Redirect non-canonical hashes so the URL stays clean.
     if (hash && hash !== route) {
       window.location.hash = route;
       return;
     }
 
-    // Highlight active nav link.
+    // Highlight active nav link (not-found intentionally matches no nav item).
     this.querySelectorAll<HTMLAnchorElement>('[data-route]').forEach((link) => {
       link.classList.toggle('active', link.dataset['route'] === route);
     });
@@ -114,6 +118,9 @@ class ScimAppElement extends HTMLElement {
         break;
       case '#/payments':
         content.innerHTML = '<payments-page></payments-page>';
+        break;
+      case '#/not-found':
+        this.renderNotFound(content);
         break;
       case '#/home':
       default: {
@@ -136,6 +143,7 @@ class ScimAppElement extends HTMLElement {
           message: 'Session timed out. Please sign in again.',
         };
         window.removeEventListener('hashchange', this.onHashChange);
+        this.stopCountdown();
         this.renderError();
         this.bindErrorActions();
       }),
@@ -145,6 +153,7 @@ class ScimAppElement extends HTMLElement {
           message: 'Authentication failed unexpectedly.',
         };
         window.removeEventListener('hashchange', this.onHashChange);
+        this.stopCountdown();
         this.renderError();
         this.bindErrorActions();
       }),
@@ -167,6 +176,7 @@ class ScimAppElement extends HTMLElement {
 
       this.authError = null;
       this.renderShell();
+      this.startCountdown();
       window.addEventListener('hashchange', this.onHashChange);
       this.routeTo(window.location.hash || '#/home');
     } catch (error) {
@@ -184,7 +194,6 @@ class ScimAppElement extends HTMLElement {
 
   private renderShell(): void {
     const profile = getAuthProfile();
-    const roles = profile.realmRoles.join(', ') || 'none';
 
     this.innerHTML = `
       <style>${SHELL_STYLES}</style>
@@ -195,13 +204,71 @@ class ScimAppElement extends HTMLElement {
           <a href="#/users"    data-route="#/users">Users</a>
           <a href="#/payments" data-route="#/payments">Payments</a>
         </nav>
-        <span class="profile-chip">👤 ${profile.preferredUsername} · ${roles}</span>
+        <span class="profile-chip" id="profile-chip">${this.profileChipText(profile.preferredUsername)}</span>
         <button type="button" class="logout-btn" data-action="logout">Logout</button>
       </div>
       <div id="page-content"></div>
     `;
 
     this.querySelector('[data-action="logout"]')?.addEventListener('click', () => void logout());
+  }
+
+  // ── token expiry countdown ─────────────────────────────────────────────────
+
+  private profileChipText(username?: string): string {
+    const profile = getAuthProfile();
+    const name = username ?? profile.preferredUsername;
+    const roles = profile.realmRoles.join(', ') || 'none';
+    const expiry = this.formatExpiry(profile.tokenExpiresAt);
+    return `\u{1F464} ${name} \u00B7 ${roles} \u00B7 ${expiry}`;
+  }
+
+  private formatExpiry(iso: string | null): string {
+    if (!iso) return '\u2013';
+    const mins = Math.ceil((new Date(iso).getTime() - Date.now()) / 60_000);
+    if (mins <= 0) return 'expired';
+    return `\u23F1 ${mins}m`;
+  }
+
+  private startCountdown(): void {
+    const tick = (): void => {
+      const chip = this.querySelector<HTMLElement>('#profile-chip');
+      if (chip) chip.textContent = this.profileChipText();
+    };
+    // Refresh every 60 s so the countdown stays accurate.
+    this.countdownTimer = window.setInterval(tick, 60_000);
+  }
+
+  private stopCountdown(): void {
+    if (this.countdownTimer !== null) {
+      window.clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+  }
+
+  // ── page renderers ─────────────────────────────────────────────────────────
+
+  private renderNotFound(container: HTMLElement): void {
+    container.innerHTML = `
+      <div style="
+        font-family:system-ui,sans-serif;
+        max-width:520px;margin:72px auto;padding:0 16px;text-align:center;
+      ">
+        <div style="font-size:64px;margin-bottom:16px;">404</div>
+        <h2 style="font-size:22px;font-weight:700;color:#111827;margin-bottom:8px;">
+          Page Not Found
+        </h2>
+        <p style="color:#6b7280;font-size:14px;margin-bottom:24px;">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <a href="#/home"
+           style="
+             display:inline-block;padding:10px 20px;
+             background:#4338ca;color:#fff;border-radius:6px;
+             text-decoration:none;font-size:14px;font-weight:600;
+           "
+        >\u2190 Go to Home</a>
+      </div>`;
   }
 
   private renderLoading(): void {

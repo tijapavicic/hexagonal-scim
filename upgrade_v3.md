@@ -531,20 +531,20 @@ cd frontend && npm run typecheck && npm run test && npm run build
 
 | Risk | Severity | Notes |
 |---|---|---|
-| `userId` in form is the **system Long ID**, not the Keycloak UUID | Medium | Users need to know their system ID (visible in the Users page). A future improvement is to auto-resolve the Long ID from the email claim in the JWT. |
-| No backend validation that `userId` matches the logged-in user | Medium | A user could supply someone else's `userId` and `accountId`. For MVP this is acceptable; for production, the controller should verify `request.userId == jwt.sub` (once Keycloak UUID ↔ system ID mapping is added). |
+| JWT email → system user mapping depends on existing user email records | Medium | In secured runtime, `userId` is resolved from JWT `email` using `ResolvePayerPort`. If no matching user email exists, account-debit payments are rejected with `400` and a clear message. |
+| Legacy fallback accepts `userId` only when no JWT principal is present | Medium | For local/no-security test runtime compatibility, controller falls back to request `userId` when JWT is unavailable. In secured runtime, JWT resolution takes precedence and client `userId` is ignored. |
 | `POST /api/v1/payments` allowlist is path-exact, not pattern-based | Low | If sub-paths like `/api/v1/payments/initiate` are added later, they won't inherit this allowlist automatically — must be added explicitly. This is intentional (secure by default). |
-| Only `BaseCatHouse` product can be purchased (backend enforces this) | Low | `PaymentService` throws `UnsupportedProductException` for any other product. Frontend should eventually show only available products in a dropdown. |
+| Only `BaseCatHouse` product can be purchased (backend enforces this) | Low | Frontend now loads products via `GET /api/v1/products` and shows a dropdown, but the backend still intentionally allows only `BaseCatHouse` in the current production phase. |
 
 ---
 
 ## 🔮 Suggested Next Steps
 
-1. **Add Keycloak UUID → system user ID lookup** — store the Keycloak `sub` UUID in the `users` table so the backend can auto-populate `userId` from the JWT, removing the need for users to know their system ID.
+1. **Persist Keycloak subject (`sub`) on users** — map JWT subject directly to domain user records and remove the no-security `userId` fallback.
 
-2. **Product dropdown in the payment form** — instead of a free-text `productId` input, fetch `GET /api/v1/products` and show a dropdown. Currently only `BaseCatHouse` is purchasable anyway.
+2. **Enforce account ownership in payment create flow** — when `accountId` is supplied, verify it belongs to the resolved authenticated user and return `403` for cross-user attempts.
 
-3. **Show the user's own payment history** — add `GET /api/v1/payments?userId={id}` endpoint so users only see their own payments (currently the list is global).
+3. **Show only caller-owned payment history** — add a scoped endpoint/filter (for example `GET /api/v1/payments/me`) so regular users do not browse global payment records.
 
-4. **Add `PUT /api/v1/payments/{id}` self-service carve-out** (if needed) — following the same `USER_ALLOWED_POST_PATHS` pattern, a `USER_ALLOWED_PUT_PATHS` can allow users to cancel their own pending payments.
+4. **Add `PUT /api/v1/payments/{id}` self-service carve-out** (if needed) — following the same allowlist approach, add explicit path entries for cancellation/update operations.
 

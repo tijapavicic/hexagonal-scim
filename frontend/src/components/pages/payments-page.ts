@@ -1,18 +1,18 @@
 import { createPayment, getPaymentById, listPayments } from '../../api/payments';
+import { listProducts } from '../../api/products';
 import type { CreatePaymentDto, PaymentDto } from '../../types/payment.dto';
+import type { ProductDto } from '../../types/product.dto';
 import type { NotificationBarElement } from '../shared/notification-bar';
 import '../shared/notification-bar';
 import '../shared/pagination-bar';
 import '../shared/modal-dialog';
 import { PAYMENTS_PAGE_STYLES } from './payments-page.styles';
-import { getAuthProfile } from '../../auth/keycloak';
 
 interface PaymentFormValues {
   productId: string;
   quantity: string;
   paymentMethod: string;
   currency: string;
-  userId: string;
   accountId: string;
 }
 
@@ -20,6 +20,7 @@ type ModalState = { kind: 'none' } | { kind: 'create' };
 
 class PaymentsPageElement extends HTMLElement {
   private payments: PaymentDto[] = [];
+  private products: ProductDto[] = [];
   private page = 0;
   private size = 10;
   private hasMore = false;
@@ -35,28 +36,32 @@ class PaymentsPageElement extends HTMLElement {
     quantity: '1',
     paymentMethod: 'BANK_ACCOUNT',
     currency: 'EUR',
-    userId: '',
     accountId: '',
   };
   private formError: string | null = null;
   private submitting = false;
 
   private toastEl!: NotificationBarElement;
-  private isAdmin = false;
-
-  private hasAdminRole(realmRoles: string[]): boolean {
-    return realmRoles.some((role) => {
-      const normalized = role.toUpperCase();
-      return normalized === 'ADMIN' || normalized === 'ROLE_ADMIN';
-    });
-  }
 
   connectedCallback(): void {
-    this.isAdmin = this.hasAdminRole(getAuthProfile().realmRoles);
     this.innerHTML = '<notification-bar id="toast"></notification-bar><div id="main"></div>';
     this.toastEl = this.querySelector('#toast') as NotificationBarElement;
     this.render();
     void this.loadPayments();
+    void this.loadProducts();
+  }
+
+  private async loadProducts(): Promise<void> {
+    try {
+      this.products = await listProducts();
+      // Pre-select the first product if none is selected
+      if (this.products.length > 0 && !this.formValues.productId) {
+        this.formValues.productId = String(this.products[0]!.id);
+      }
+    } catch {
+      // Products are a convenience — failure does not block the page
+      this.products = [];
+    }
   }
 
   private async loadPayments(): Promise<void> {
@@ -81,26 +86,21 @@ class PaymentsPageElement extends HTMLElement {
     const form = this.querySelector<HTMLFormElement>('#payment-form');
     if (!form) return null;
     return {
-      productId:     (form.querySelector<HTMLInputElement>('[name="productId"]')?.value ?? '').trim(),
+      productId:     (form.querySelector<HTMLSelectElement>('[name="productId"]')?.value ?? '').trim(),
       quantity:      (form.querySelector<HTMLInputElement>('[name="quantity"]')?.value ?? '1').trim(),
       paymentMethod: (form.querySelector<HTMLSelectElement>('[name="paymentMethod"]')?.value ?? '').trim(),
       currency:      (form.querySelector<HTMLSelectElement>('[name="currency"]')?.value ?? '').trim(),
-      userId:        (form.querySelector<HTMLInputElement>('[name="userId"]')?.value ?? '').trim(),
       accountId:     (form.querySelector<HTMLInputElement>('[name="accountId"]')?.value ?? '').trim(),
     };
   }
 
   private validateForm(values: PaymentFormValues): string | null {
     if (!values.productId || isNaN(Number(values.productId)) || Number(values.productId) <= 0)
-      return 'Product ID must be a positive number.';
+      return 'Please select a product.';
     const qty = Number(values.quantity);
     if (!Number.isInteger(qty) || qty < 1) return 'Quantity must be a whole number ≥ 1.';
     if (!values.paymentMethod) return 'Payment method is required.';
-    if (!values.currency) return 'Currency is required.';
-    const hasUserId    = values.userId !== '';
-    const hasAccountId = values.accountId !== '';
-    if (hasUserId !== hasAccountId)
-      return 'User ID and Account ID must both be provided together, or both left empty.';
+    if (!values.currency)      return 'Currency is required.';
     return null;
   }
 
@@ -125,7 +125,6 @@ class PaymentsPageElement extends HTMLElement {
       quantity:      Number(values.quantity),
       paymentMethod: values.paymentMethod,
       currency:      values.currency,
-      ...(values.userId    ? { userId:    Number(values.userId)    } : {}),
       ...(values.accountId ? { accountId: Number(values.accountId) } : {}),
     };
 
@@ -156,18 +155,19 @@ class PaymentsPageElement extends HTMLElement {
   private detailTemplate(payment: PaymentDto): string {
     const field = (label: string, value: string) =>
       `<div><div class="dl">${label}</div><div class="dv">${value}</div></div>`;
+    const productName = this.products.find((p) => p.id === payment.productId)?.name ?? '–';
 
     return `
       <div class="detail-grid">
         ${field('ID',             String(payment.id))}
-        ${field('Product ID',     payment.productId === null  ? '–' : String(payment.productId))}
+        ${field('Product',        payment.productId === null ? '–' : `${productName} (#${payment.productId})`)}
         ${field('Quantity',       String(payment.quantity))}
         ${field('Total Amount',   payment.totalAmount)}
         ${field('Currency',       payment.currency)}
         ${field('Status',         payment.status)}
         ${field('Payment Method', payment.paymentMethod)}
-        ${field('User ID',        payment.userId    === null  ? '–' : String(payment.userId))}
-        ${field('Account ID',     payment.accountId === null  ? '–' : String(payment.accountId))}
+        ${field('User ID',        payment.userId    === null ? '–' : String(payment.userId))}
+        ${field('Account ID',     payment.accountId === null ? '–' : String(payment.accountId))}
       </div>`;
   }
 
@@ -182,6 +182,7 @@ class PaymentsPageElement extends HTMLElement {
     if (this.payments.length === 0) return '<div class="state-msg">No payments found.</div>';
 
     const rows = this.payments.flatMap((payment) => {
+      const productName = this.products.find((p) => p.id === payment.productId)?.name ?? payment.productId ?? '–';
       const detailRow =
         this.expandedPaymentId === payment.id && this.expandedPayment
           ? `<tr class="detail-row"><td colspan="7">${this.detailTemplate(this.expandedPayment)}</td></tr>`
@@ -190,7 +191,7 @@ class PaymentsPageElement extends HTMLElement {
       return `
         <tr class="payment-row">
           <td>${payment.id}</td>
-          <td>${payment.productId ?? '–'}</td>
+          <td>${productName}</td>
           <td>${payment.quantity}</td>
           <td>${payment.totalAmount}</td>
           <td>${payment.currency}</td>
@@ -221,6 +222,17 @@ class PaymentsPageElement extends HTMLElement {
       </table>`;
   }
 
+  private productOptions(): string {
+    if (this.products.length === 0) {
+      return `<option value="">Loading products…</option>`;
+    }
+    return this.products
+      .map((p) => `<option value="${p.id}" ${this.formValues.productId === String(p.id) ? 'selected' : ''}>
+          ${p.name} — ${p.price} ${p.currency} (stock: ${p.stockQuantity})
+        </option>`)
+      .join('');
+  }
+
   private createModalTemplate(): string {
     const open = this.modal.kind === 'create';
     const confirmLabel = this.submitting ? 'Saving...' : 'Purchase';
@@ -231,9 +243,10 @@ class PaymentsPageElement extends HTMLElement {
         <form id="payment-form" class="form-grid" autocomplete="off">
 
           <div class="field">
-            <label for="p-productId">Product ID <span style="color:#b91c1c">*</span></label>
-            <input id="p-productId" type="number" name="productId" min="1"
-                   value="${this.formValues.productId}" placeholder="e.g. 1" required>
+            <label for="p-productId">Product <span style="color:#b91c1c">*</span></label>
+            <select id="p-productId" name="productId" required>
+              ${this.productOptions()}
+            </select>
           </div>
 
           <div class="field">
@@ -261,14 +274,9 @@ class PaymentsPageElement extends HTMLElement {
           </div>
 
           <p style="font-size:13px;color:#6b7280;margin-top:4px;">
-            Optional: fill both fields below to debit an account on success.
+            Optional: provide your Account ID to debit it on success.
+            Your user is identified automatically from your session.
           </p>
-
-          <div class="field">
-            <label for="p-userId">Your User ID</label>
-            <input id="p-userId" type="number" name="userId" min="1"
-                   value="${this.formValues.userId}" placeholder="Leave blank to skip debit">
-          </div>
 
           <div class="field">
             <label for="p-accountId">Your Account ID</label>
@@ -306,7 +314,8 @@ class PaymentsPageElement extends HTMLElement {
 
   private bindEvents(): void {
     this.querySelector('[data-action="create"]')?.addEventListener('click', () => {
-      this.formValues = { productId: '', quantity: '1', paymentMethod: 'BANK_ACCOUNT', currency: 'EUR', userId: '', accountId: '' };
+      const firstProductId = this.products.length > 0 ? String(this.products[0]!.id) : '';
+      this.formValues = { productId: firstProductId, quantity: '1', paymentMethod: 'BANK_ACCOUNT', currency: 'EUR', accountId: '' };
       this.formError = null;
       this.modal = { kind: 'create' };
       this.render();

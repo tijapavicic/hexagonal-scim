@@ -18,8 +18,9 @@ export interface PaymentDto {
  * Body for POST /api/v1/payments (self-service product purchase).
  *
  * - `productId`, `quantity`, `paymentMethod`, `currency` are required.
- * - `userId` + `accountId` are optional but **must be provided together** when
- *   account-debit is desired. Omit both for a no-debit purchase.
+ * - `userId` is resolved automatically by the backend from the JWT email claim.
+ * - `accountId` is optional. When provided, the server checks the balance and
+ *   debits it on success.
  */
 export interface CreatePaymentDto {
   productId: number;
@@ -28,8 +29,6 @@ export interface CreatePaymentDto {
   paymentMethod: string;
   /** EUR | USD */
   currency: string;
-  /** Optional: your system User ID (visible in Users page). Must be paired with accountId. */
-  userId?: number;
-  /** Optional: your Account ID. Must be paired with userId. */
+  /** Optional: your Account ID. The server resolves your user automatically. */
   accountId?: number;
 }

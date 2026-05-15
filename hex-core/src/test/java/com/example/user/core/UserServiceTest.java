@@ -339,6 +339,13 @@ class UserServiceTest {
         }
 
         @Override
+        public Optional<User> findByEmail(String email) {
+            return store.values().stream()
+                    .filter(u -> u.email().equalsIgnoreCase(email))
+                    .findFirst();
+        }
+
+        @Override
         public boolean existsByEmail(String email) {
             return store.values().stream().anyMatch(u -> u.email().equalsIgnoreCase(email));
         }

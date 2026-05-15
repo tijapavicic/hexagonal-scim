@@ -11,6 +11,9 @@ public interface UserRepositoryPort {
 
     Optional<User> findById(Long id);
 
+    /** Looks up a user by their exact (case-insensitive) email address. */
+    Optional<User> findByEmail(String email);
+
     boolean existsByEmail(String email);
 
     /** Returns a window of users, sorted by id ascending. */

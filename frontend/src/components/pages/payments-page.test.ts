@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listPaymentsMock, getPaymentByIdMock, createPaymentMock, authProfileRef } = vi.hoisted(() => ({
+const { listPaymentsMock, getPaymentByIdMock, createPaymentMock, listProductsMock, authProfileRef } = vi.hoisted(() => ({
   listPaymentsMock: vi.fn(),
   getPaymentByIdMock: vi.fn(),
   createPaymentMock: vi.fn(),
+  listProductsMock: vi.fn(),
   authProfileRef: {
     preferredUsername: 'testuser',
     realmRoles: ['ROLE_USER'] as string[],
@@ -15,6 +16,10 @@ vi.mock('../../api/payments', () => ({
   listPayments: listPaymentsMock,
   getPaymentById: getPaymentByIdMock,
   createPayment: createPaymentMock,
+}));
+
+vi.mock('../../api/products', () => ({
+  listProducts: listProductsMock,
 }));
 
 vi.mock('../../auth/keycloak', () => ({
@@ -56,11 +61,21 @@ const paymentB = {
   accountId: null,
 };
 
+const productA = {
+  id: 1,
+  name: 'BaseCatHouse',
+  description: 'Default product',
+  price: '99.99',
+  currency: 'EUR',
+  stockQuantity: 10,
+};
+
 describe('payments-page component', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
-    // Default: ROLE_USER (read-only access)
+    listProductsMock.mockResolvedValue([productA]);
+    // Default: ROLE_USER
     authProfileRef.realmRoles = ['ROLE_USER'];
   });
 
@@ -134,19 +149,17 @@ describe('payments-page component', () => {
     createBtn!.click();
     await flushPromises();
 
-    const productIdInput   = el.querySelector<HTMLInputElement>('#p-productId');
+    const productIdSelect  = el.querySelector<HTMLSelectElement>('#p-productId');
     const quantityInput    = el.querySelector<HTMLInputElement>('#p-quantity');
     const methodSelect     = el.querySelector<HTMLSelectElement>('#p-paymentMethod');
     const currencySelect   = el.querySelector<HTMLSelectElement>('#p-currency');
-    const userIdInput      = el.querySelector<HTMLInputElement>('#p-userId');
     const accountIdInput   = el.querySelector<HTMLInputElement>('#p-accountId');
-    expect(productIdInput).not.toBeNull();
+    expect(productIdSelect).not.toBeNull();
 
-    productIdInput!.value  = '1';
+    productIdSelect!.value = '1';
     quantityInput!.value   = '2';
     methodSelect!.value    = 'PAYPAL';
     currencySelect!.value  = 'USD';
-    userIdInput!.value     = '42';
     accountIdInput!.value  = '7';
 
     el.querySelector('#payment-modal')?.dispatchEvent(new CustomEvent('dialog-confirm'));
@@ -157,7 +170,6 @@ describe('payments-page component', () => {
       quantity:      2,
       paymentMethod: 'PAYPAL',
       currency:      'USD',
-      userId:        42,
       accountId:     7,
     });
   });

@@ -32,6 +32,12 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public Optional<User> findByEmail(String email) {
+        return userJpaRepository.findByEmailIgnoreCase(email)
+                .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getDisplayName()));
+    }
+
+    @Override
     public boolean existsByEmail(String email) {
         return userJpaRepository.existsByEmailIgnoreCase(email);
     }

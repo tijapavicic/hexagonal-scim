@@ -23,20 +23,26 @@ import type { PaymentDto } from '../types/payment.dto';
 
 const paymentA: PaymentDto = {
   id: 1,
-  amount: '100.00',
+  productId: 1,
+  quantity: 1,
+  totalAmount: '100.00',
   currency: 'EUR',
   status: 'PENDING',
+  paymentMethod: 'PAYPAL',
   userId: 42,
-  createdAt: '2026-05-15T12:00:00Z',
+  accountId: 7,
 };
 
 const paymentB: PaymentDto = {
   id: 2,
-  amount: '49.99',
+  productId: 1,
+  quantity: 2,
+  totalAmount: '49.99',
   currency: 'USD',
   status: 'COMPLETED',
+  paymentMethod: 'BANK_ACCOUNT',
   userId: null,
-  createdAt: '2026-05-15T13:00:00Z',
+  accountId: null,
 };
 
 describe('api/payments', () => {
@@ -78,7 +84,7 @@ describe('api/payments', () => {
 
   describe('createPayment', () => {
     it('calls POST /api/v1/payments with body', async () => {
-      const body = { amount: '25.00', currency: 'GBP', status: 'PENDING', userId: 7 };
+      const body = { productId: 1, quantity: 1, paymentMethod: 'PAYPAL', currency: 'USD', accountId: 7 };
       postJsonMock.mockResolvedValue({ ...paymentA, ...body, id: 10 });
       const result = await createPayment(body);
       expect(postJsonMock).toHaveBeenCalledWith('/api/v1/payments', body);
@@ -86,9 +92,9 @@ describe('api/payments', () => {
     });
 
     it('propagates 400 validation failure', async () => {
-      postJsonMock.mockRejectedValue(new Error('Amount must be positive'));
-      await expect(createPayment({ amount: '-1', currency: 'EUR', status: 'PENDING' }))
-        .rejects.toThrow('Amount must be positive');
+      postJsonMock.mockRejectedValue(new Error('quantity must be > 0'));
+      await expect(createPayment({ productId: 1, quantity: 0, paymentMethod: 'PAYPAL', currency: 'EUR' }))
+        .rejects.toThrow('quantity must be > 0');
     });
   });
 });

@@ -48,6 +48,9 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
     /**
      * POST paths that any authenticated user (ROLE_USER or ROLE_ADMIN) may call.
      * All other write paths still require ROLE_ADMIN.
+     *
+     * <p>This set is intentionally path-exact (not pattern-based) — new sub-paths
+     * must be added explicitly, keeping security opt-in by default.
      */
     private static final Set<String> USER_ALLOWED_POST_PATHS = Set.of("/api/v1/payments");
 

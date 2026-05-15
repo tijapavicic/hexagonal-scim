@@ -240,12 +240,12 @@ export interface UpdateUserDto {
 
 **Milestone**: `#/payments` renders paginated payments list with create form.
 
-### 8.1 – API client `src/api/payments.ts`
+### 8.1 – API client `src/api/payments.ts` ✅
 
-- [ ] `listPayments(page, size)` → `PaymentDto[]`
-- [ ] `getPaymentById(id)` → `PaymentDto`
-- [ ] `createPayment(body: CreatePaymentDto)` → `PaymentDto`
-- [ ] Throw typed `ApiHttpError` on non-2xx.
+- [x] `listPayments(page, size)` → `PaymentDto[]`
+- [x] `getPaymentById(id)` → `PaymentDto`
+- [x] `createPayment(body: CreatePaymentDto)` → `PaymentDto`
+- [x] Throw typed `ApiHttpError` on non-2xx.
 
 ### 8.2 – DTO types `src/types/payment.dto.ts`
 
@@ -379,8 +379,8 @@ export interface CreatePaymentDto {
 | `src/components/shared/modal-dialog.ts` | 7 | ✅ done |
 | `src/components/shared/notification-bar.ts` | 7 | ✅ done |
 | `src/components/shared/pagination-bar.ts` | 7 | ✅ done |
-| `src/api/payments.ts` | 8 | ⬜ todo |
-| `src/types/payment.dto.ts` | 8 | ⬜ todo |
+| `src/api/payments.ts` | 8 | ✅ done |
+| `src/types/payment.dto.ts` | 8 | ✅ done |
 | `src/components/pages/payments-page.ts` | 8 | ⬜ todo |
 | `e2e/users-crud.spec.ts` | 10 | ⬜ todo |
 | `e2e/payments.spec.ts` | 10 | ⬜ todo |

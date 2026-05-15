@@ -37,6 +37,35 @@ Then open `https://localhost:3000`.
 
 > The frontend container serves static assets via Nginx and proxies `/api/*` to the backend container.
 
+## Test coverage (Phase 4)
+
+Run unit + component tests (Vitest):
+
+```bash
+cd /Users/copor/IdeaProjects/hexagonal-scim/frontend
+npm test
+```
+
+Run E2E smoke tests (Playwright):
+
+```bash
+cd /Users/copor/IdeaProjects/hexagonal-scim/frontend
+npm run test:e2e
+```
+
+Optional E2E overrides:
+
+- `E2E_BASE_URL` (default: `https://localhost:3000`)
+- `E2E_USERNAME` (default: `testuser`)
+- `E2E_PASSWORD` (default: `password`)
+
+Install Playwright browser binaries (one-time if needed):
+
+```bash
+cd /Users/copor/IdeaProjects/hexagonal-scim/frontend
+npx playwright install chromium
+```
+
 ## Required Keycloak settings
 
 - Client ID: `hexagonal-scim-public` (or match `VITE_KEYCLOAK_CLIENT_ID`)

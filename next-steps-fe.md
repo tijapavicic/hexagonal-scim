@@ -51,15 +51,20 @@ Progress from login-only UI to a production-ready frontend that can securely cal
 
 ## Phase 4 - Test Coverage
 
-- [ ] Unit tests (Vitest/Jest) for auth utility behavior (init once, refresh path, logout path).
-- [ ] Component tests for `scim-app` rendering states (loading, authenticated, error).
-- [ ] E2E smoke test (Playwright):
-  - [ ] Open app
-  - [ ] Redirect to Keycloak
-  - [ ] Login
-  - [ ] Return to app
-  - [ ] See authenticated indicator
-- [ ] Add one API E2E path after login (e.g., users list succeeds with bearer token).
+- [x] Unit tests (Vitest/Jest) for auth utility behavior (init once, refresh path, logout path).
+- [x] Component tests for `scim-app` rendering states (loading, authenticated, error).
+- [x] E2E smoke test (Playwright):
+  - [x] Open app
+  - [x] Redirect to Keycloak
+  - [x] Login
+  - [x] Return to app
+  - [x] See authenticated indicator
+- [x] Add one API E2E path after login (e.g., users list succeeds with bearer token).
+  - Verified by `frontend/e2e/auth-smoke.spec.ts`:
+    - waits for `GET /api/v1/users` and asserts `200` after login
+  - Verification commands executed:
+    - `npm test` -> 2 files, 6 tests passed
+    - `npm run test:e2e` -> 1 Playwright smoke test passed
 
 ## Phase 5 - Maintainability and Delivery
 

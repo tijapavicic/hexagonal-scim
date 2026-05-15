@@ -90,13 +90,13 @@ src/
 - [x] Topbar nav links highlight active route.
 - [x] Keep auth bootstrap before any route render (login-required guard).
 
-### 6.2 – `home-page.ts` – Dashboard
+### 6.2 – `home-page.ts` – Dashboard ✅
 
-- [ ] 3× summary cards: total users loaded, total payments loaded, logged-in username.
-- [ ] Each card links to its full page (`#/users`, `#/payments`).
-- [ ] Fetch `GET /api/v1/users?page=0&size=10` and `GET /api/v1/payments?page=0&size=10` for counts
+- [x] 3× summary cards: total users loaded, total payments loaded, logged-in username.
+- [x] Each card links to its full page (`#/users`, `#/payments`).
+- [x] Fetch `GET /api/v1/users?page=0&size=10` and `GET /api/v1/payments?page=0&size=10` for counts
   *(note: backend returns plain arrays; show count of current page + "View all" link)*.
-- [ ] Loading skeleton while fetching; error card if either call fails.
+- [x] Loading skeleton while fetching; error card if either call fails.
 
 **Files changed**: `scim-app.ts` (refactor), `pages/home-page.ts` (new)  
 **Tests**: unit – router dispatch; component – home-page card render.

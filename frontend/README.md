@@ -9,6 +9,33 @@ This first frontend milestone is intentionally small: the app bootstraps with a 
 - Redirects to local Keycloak when there is no session.
 - Renders authenticated state and supports logout.
 
+## Style path decision
+
+- Frontend standard is now **Web Components + TypeScript**.
+- Legacy React scaffolding has been removed to keep one maintainable path for backend-focused contributors.
+- New UI work should extend `src/components/scim-app.ts` and related TypeScript modules.
+
+## Architecture (small)
+
+```mermaid
+flowchart LR
+  Browser[Browser] -->|HTTPS| Frontend[Frontend Nginx :3000]
+  Frontend -->|/api/* proxy| Backend[Spring API :8080]
+  Browser -->|OIDC Auth Code + PKCE| Keycloak[Keycloak :8443]
+  Frontend -->|Bearer token| Backend
+```
+
+## File ownership map
+
+- `src/main.tsx` - app bootstrap; mounts `<scim-app>` custom element.
+- `src/components/scim-app.ts` - primary UI shell; auth state and users rendering.
+- `src/auth/keycloak.ts` - Keycloak integration, lifecycle events, token refresh.
+- `src/api/http.ts` - authenticated HTTP helper (token refresh, bearer header, 401/403 handling).
+- `src/api/user-list.ts` - users endpoint vertical slice.
+- `src/types/user-list.dto.ts` - DTO contract for users API response.
+- `src/**/*.test.ts` - unit/component tests (Vitest).
+- `e2e/*.spec.ts` - browser smoke tests (Playwright).
+
 ## Local setup
 
 1. Copy `.env.example` to `.env` if you need custom values.

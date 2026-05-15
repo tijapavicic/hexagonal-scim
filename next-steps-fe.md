@@ -68,10 +68,13 @@ Progress from login-only UI to a production-ready frontend that can securely cal
 
 ## Phase 5 - Maintainability and Delivery
 
-- [ ] Decide on one frontend style path and remove unused React scaffolding if no longer needed.
-- [ ] Add `frontend/README.md` section with architecture diagram (small) and file ownership map.
-- [ ] Add npm scripts for quality checks (`typecheck`, `lint`, `test`).
-- [ ] Integrate frontend checks into CI before merge.
+- [x] Decide on one frontend style path and remove unused React scaffolding if no longer needed.
+  - Chosen path: Web Components + TypeScript only.
+  - Removed unused React-era files under `frontend/src` (`App.tsx`, `pages/*`, `context/*`, legacy `components/*`, legacy API helpers).
+- [x] Add `frontend/README.md` section with architecture diagram (small) and file ownership map.
+- [x] Add npm scripts for quality checks (`typecheck`, `lint`, `test`).
+- [x] Integrate frontend checks into CI before merge.
+  - Added `frontend-quality` job in `.github/workflows/ci.yml` running `typecheck`, `lint`, `test`, and `build`.
 
 ## Definition of Done for Frontend Step 2
 

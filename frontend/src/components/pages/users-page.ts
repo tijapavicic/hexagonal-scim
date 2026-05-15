@@ -28,8 +28,15 @@ class UsersPageElement extends HTMLElement {
   private isAdmin = false;
   private toastEl!: NotificationBarElement;
 
+  private hasAdminRole(realmRoles: string[]): boolean {
+    return realmRoles.some((role) => {
+      const normalized = role.toUpperCase();
+      return normalized === 'ADMIN' || normalized === 'ROLE_ADMIN';
+    });
+  }
+
   connectedCallback(): void {
-    this.isAdmin = getAuthProfile().realmRoles.some(r => r.toUpperCase() === 'ADMIN');
+    this.isAdmin = this.hasAdminRole(getAuthProfile().realmRoles);
     this.innerHTML = '<notification-bar id="toast"></notification-bar><div id="main"></div>';
     this.toastEl = this.querySelector('#toast') as NotificationBarElement;
     this.render();

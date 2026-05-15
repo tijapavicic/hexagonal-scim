@@ -1,13 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Hoist mocks ───────────────────────────────────────────────────────────────
-const { listUsersMock, getUserByIdMock, createUserMock, updateUserMock, deleteUserMock } =
+const { listUsersMock, getUserByIdMock, createUserMock, updateUserMock, deleteUserMock, authProfileRef } =
   vi.hoisted(() => ({
     listUsersMock:    vi.fn(),
     getUserByIdMock:  vi.fn(),
     createUserMock:   vi.fn(),
     updateUserMock:   vi.fn(),
     deleteUserMock:   vi.fn(),
+    authProfileRef: {
+      preferredUsername: 'testuser',
+      realmRoles: ['ROLE_USER'] as string[],
+      tokenExpiresAt: null as string | null,
+    },
   }));
 
 vi.mock('../../api/users', () => ({
@@ -19,11 +24,7 @@ vi.mock('../../api/users', () => ({
 }));
 
 vi.mock('../../auth/keycloak', () => ({
-  getAuthProfile: () => ({
-    preferredUsername: 'testuser',
-    realmRoles: ['ROLE_USER'],
-    tokenExpiresAt: null,
-  }),
+  getAuthProfile: () => authProfileRef,
 }));
 
 // Stub shared Web Components so jsdom doesn't fail on unknown elements
@@ -45,6 +46,9 @@ describe('users-page component', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
+    authProfileRef.preferredUsername = 'testuser';
+    authProfileRef.realmRoles = ['ROLE_USER'];
+    authProfileRef.tokenExpiresAt = null;
   });
 
   afterEach(() => { document.body.innerHTML = ''; });
@@ -122,10 +126,15 @@ describe('users-page component', () => {
   });
 
   it('shows Create / Edit / Delete buttons for ADMIN role', async () => {
-    // Admin-role rendering is covered by integration/E2E tests (Phase 10).
-    // In this unit test file the auth mock returns ROLE_USER; a separate
-    // describe block with its own vi.mock factory would be needed for ADMIN.
-    // Skipping to keep each test independent and deterministic.
+    authProfileRef.realmRoles = ['ROLE_ADMIN'];
+    listUsersMock.mockResolvedValue([ALICE]);
+
+    const el = mount();
+    await flushPromises();
+
+    expect(el.querySelector('[data-action="create"]')).not.toBeNull();
+    expect(el.querySelector('[data-action="edit"]')).not.toBeNull();
+    expect(el.querySelector('[data-action="delete"]')).not.toBeNull();
   });
 
   // ── Toggle detail row ─────────────────────────────────────────────────────

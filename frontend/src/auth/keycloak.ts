@@ -38,6 +38,7 @@ const listeners: Record<AuthLifecycleEvent, Set<AuthListener>> = {
 let initPromise: Promise<boolean> | null = null;
 let refreshTimer: number | null = null;
 let lifecycleBound = false;
+let beforeUnloadBound = false;
 
 function emit(event: AuthLifecycleEvent, payload?: AuthErrorDetails): void {
   listeners[event].forEach((listener) => listener(payload));
@@ -118,6 +119,19 @@ function bindLifecycleEvents(): void {
   };
 }
 
+function bindBeforeUnloadEvent(): void {
+  if (beforeUnloadBound) {
+    return;
+  }
+
+  beforeUnloadBound = true;
+
+  window.addEventListener('beforeunload', () => {
+    // Logout when user closes the browser/tab
+    void logout();
+  });
+}
+
 /**
  * Initializes redirect-based login exactly once for the browser session.
  */
@@ -139,6 +153,8 @@ export function initAuth(): Promise<boolean> {
               .updateToken(30)
               .catch((error) => emit('onAuthError', classifyAuthError(error)));
           }, 60_000);
+          // Bind beforeunload event to logout when browser is closed
+          bindBeforeUnloadEvent();
         }
 
         return authenticated;

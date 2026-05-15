@@ -86,5 +86,28 @@ describe('auth/keycloak', () => {
     expect(keycloak.logout).toHaveBeenCalledTimes(1);
     expect(keycloak.logout).toHaveBeenCalledWith({ redirectUri: window.location.origin });
   });
+
+  it('binds beforeunload event to logout when browser closes', async () => {
+    const { initAuth, keycloak } = await loadAuthModule();
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+    await initAuth();
+
+    // Verify beforeunload event listener was added
+    const beforeUnloadCall = addEventListenerSpy.mock.calls.find(
+      (call) => call[0] === 'beforeunload'
+    );
+    expect(beforeUnloadCall).toBeDefined();
+
+    // Simulate beforeunload event
+    const beforeUnloadHandler = beforeUnloadCall?.[1] as EventListener;
+    beforeUnloadHandler?.(new Event('beforeunload'));
+
+    // Verify logout was called
+    expect(keycloak.logout).toHaveBeenCalledTimes(1);
+    expect(keycloak.logout).toHaveBeenCalledWith({ redirectUri: window.location.origin });
+
+    addEventListenerSpy.mockRestore();
+  });
 });
 

@@ -30,5 +30,16 @@ public interface UserRepositoryPort {
 
     /** Removes the user with the given id from the store. */
     void deleteById(Long id);
+
+    /**
+     * Find seller by seller display name (shop name).
+     *
+     * Used for looking up seller profiles publicly.
+     * Seller display names are unique.
+     *
+     * @param sellerDisplayName seller's shop name
+     * @return seller user if found
+     */
+    Optional<User> findBySellerDisplayName(String sellerDisplayName);
 }
 

@@ -6,21 +6,26 @@ Quick links: [Frontend Quick Start](#frontend-quick-start)
 
 ## Contents
 
-- [Frontend Quick Start](#frontend-quick-start)
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Modules](#modules)
-- [Database migrations](#database-migrations)
-- [Production release checklist](#production-release-checklist)
-- [API versioning](#api-versioning)
-- [Endpoints](#endpoints)
-- [Frontend](#frontend)
-- [Build](#build)
-- [Run With Docker Compose](#run-with-docker-compose)
-- [Authentication (Keycloak)](#authentication-keycloak)
+1. [How to run me](#how-to-run-me)
+2. [Full Stack Quick Start](#full-stack-quick-start)
+3. [Run Everything EXCEPT Backend](#run-everything-except-backend-debug-from-intellij)
+4. [Run Everything EXCEPT FE](#run-everything-except-fe)
+5. [Diagrams](#diagrams)
+6. [Project Structure](#project-structure)
+7. [Architecture](#architecture)
+8. [Modules](#modules)
+9. [Database migrations](#database-migrations)
+10. [Production release checklist](#production-release-checklist)
+11. [API versioning](#api-versioning)
+12. [Endpoints](#endpoints)
+13. [Frontend](#frontend)
+14. [Build](#build)
+15. [Run With Docker Compose](#run-with-docker-compose)
+16. [Authentication (Keycloak)](#authentication-keycloak)
 
-## Frontend Quick Start
+# How to run me
 
+## Full Stack Quick Start
 Run the full stack (frontend + backend + Keycloak + DB):
 
 ```bash
@@ -33,6 +38,88 @@ Then open `https://localhost:3000`.
 - Keycloak admin: `https://localhost:8443`
 - First visit uses a self-signed cert; accept the browser warning for local dev.
 
+## Run Everything EXCEPT Backend (Debug from IntelliJ)
+Debug or test backend APIs with Postman (collection and environment included in `postman/`)::
+```shell
+# Terminal 1: Start all services except the app
+docker compose up --build --scale app=0
+
+# This brings up:
+# ✅ PostgreSQL (5432)
+# ✅ Keycloak (8443)
+# ✅ Nginx/Frontend (3000)
+# ✅ All observability stack (Prometheus, Grafana, Fluent Bit, Splunk)
+```
+Debug Backend from IntelliJ:
+1. Set active profile to `docker` (enables Docker-friendly config).
+2. Run `HexagonalScimApplication` in debug mode.
+3. Set breakpoints in backend code (e.g. `PaymentService.initiatePayment`).
+4. Trigger API calls from Postman or frontend to hit breakpoints.
+5. Inspect variables, step through code, and verify behavior.
+6. Check logs in terminal and Postman responses for expected results.
+7. Stop services with `docker compose down` when done.
+   8. IntelliJ Setup for debugging:
+         
+   
+         Run → Edit Configurations → + New → Remote JVM Debug
+         Set Host: localhost, Port: 5005
+
+         Access URLs:
+         Frontend: https://localhost:3000
+         Backend API: http://localhost:8080
+         Keycloak: https://localhost:8443
+
+Debug Backend from IntelliJ with mvn:
+```bash
+# Terminal 2: Run backend with IDE debugger
+mvn -pl hex-application spring-boot:run
+
+# OR with debugging on port 5005:
+mvn -pl hex-application spring-boot:run \
+  -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+````
+## Run Everything EXCEPT FE
+and 2️⃣ Run Everything EXCEPT Frontend (Debug from IntelliJ/Browser Dev Tools)
+Start Services (without frontend):
+```bash 
+# Terminal 1: Start all services except frontend
+docker compose up --build --scale hexagonal-scim-frontend=0
+
+# This brings up:
+# ✅ PostgreSQL (5432)
+# ✅ Keycloak (8443)
+# ✅ Spring Boot Backend (8080)
+# ✅ All observability stack
+```
+
+Run Frontend Dev Server:
+```bash
+# Terminal 2: Start Vite dev server with hot reload
+cd frontend
+npm install
+npm run dev
+
+# expected output
+#  VITE v5.x.x  ready in 123 ms
+
+#  ➜  Local:   http://localhost:5173/
+#  ➜  press h to show help
+```
+Access URLs:
+Frontend: http://localhost:5173
+Backend API: http://localhost:8080
+Keycloak: https://localhost:8443
+
+Debug Frontend:
+Open http://localhost:5173 in Chrome
+Press F12 → Sources tab
+Edit files in your IDE (e.g., frontend/src/components/...)
+Vite auto-refreshes the browser (hot module replacement)
+Set breakpoints in DevTools Sources tab
+
+
+
+# Diagrams
 ## Project Structure
 
 ```
@@ -553,6 +640,73 @@ Open `http://localhost:3000`.
 > In dev mode the Vite proxy forwards `/api/*` to `http://localhost:8080`, so there is no CORS issue.
 > For local Keycloak login in frontend dev mode, use `frontend/.env.example` as reference and set `VITE_KEYCLOAK_*` values in `frontend/.env`.
 
+### Debug Backend from IntelliJ IDE
+
+Run everything **except** the backend app, then launch backend from your IDE with debugger:
+
+```bash
+# Terminal 1 — start all services except backend
+docker compose up --build --scale app=0
+
+# Terminal 2 — run backend with debugging on port 5005
+mvn -pl hex-application spring-boot:run \
+  -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+```
+
+**IntelliJ Setup:**
+1. **Run** → **Edit Configurations** → **+ New** → **Remote JVM Debug**
+2. Set `Host: localhost`, `Port: 5005`
+3. Click **Debug** button (green bug icon)
+4. Set breakpoints in code — they will trigger when requests hit
+
+**Access:** Frontend `https://localhost:3000` → calls backend `http://localhost:8080`
+
+### Debug Frontend with Vite Hot Reload
+
+Run everything **except** the frontend, then launch Vite dev server with live reload:
+
+```bash
+# Terminal 1 — start all services except frontend container
+docker compose up --build --scale hexagonal-scim-frontend=0
+
+# Terminal 2 — start Vite dev server with hot reload
+cd frontend
+npm install
+npm run dev
+```
+
+**Vite Dev Output:**
+```
+  VITE v5.x.x  ready in 123 ms
+  ➜  Local:   http://localhost:5173/
+  ➜  press h to show help
+```
+
+**Debug Frontend:**
+1. Open `http://localhost:5173` in Chrome
+2. Press **F12** → **Sources** tab
+3. Edit files in `frontend/src/` — Vite auto-refreshes browser
+4. Set breakpoints in DevTools **Sources** tab
+
+**Access:** Frontend `http://localhost:5173` (hot reload) → calls backend `http://localhost:8080`
+
+### Quick Reference — Debug Workflows
+
+| Scenario | Command | Port | Debug Tool |
+|----------|---------|------|-----------|
+| **Debug Backend** | `docker compose up --scale app=0` then `mvn ... spring-boot:run -Dspring-boot.run.jvmArguments=...` | 8080 | IntelliJ Remote Debug (5005) |
+| **Debug Frontend** | `docker compose up --scale hexagonal-scim-frontend=0` then `cd frontend && npm run dev` | 5173 | Browser DevTools + Hot Reload |
+| **Full Stack** | `docker compose up --build` | 3000 | Browser DevTools only |
+
+### Key Notes
+
+✅ **Backend debug**: IDE uses local Maven build; all code changes reload after rebuild  
+✅ **Frontend debug**: Vite proxy forwards `/api/*` to backend (no CORS issues)  
+✅ **Keycloak**: Always running; login flow works in debug workflows  
+✅ **Database**: PostgreSQL in Docker, accessible from both debug modes  
+✅ **Hot reload**: Frontend auto-refreshes on file save; backend requires rebuild  
+✅ **Port isolation**: Services use standard ports (8080, 5173, 5432, 8443)
+
 ### Run everything with Docker Compose (with auth)
 
 ```bash
@@ -929,5 +1083,3 @@ curl -i -X DELETE http://localhost:8080/api/v1/users/1 -H "Authorization: Bearer
 # Legacy endpoint (returns Deprecation headers)
 curl -i http://localhost:8080/api/users/1 -H "Authorization: Bearer $TOKEN"
 ```
-
-

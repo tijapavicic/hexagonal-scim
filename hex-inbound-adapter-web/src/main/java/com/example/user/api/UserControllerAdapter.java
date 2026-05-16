@@ -26,6 +26,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -45,6 +47,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping({UserControllerAdapter.V1_BASE_PATH, UserControllerAdapter.LEGACY_BASE_PATH})
 public class UserControllerAdapter {
+    private static final Logger logger = LoggerFactory.getLogger(UserControllerAdapter.class);
+
     public static final String V1_BASE_PATH = "/api/v1/users";
 
     /**
@@ -111,7 +115,9 @@ public class UserControllerAdapter {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
+        logger.info("Creating user: email={}", request.email());
         User created = createUserPort.create(request.email(), request.displayName());
+        logger.info("User created successfully: id={}, email={}", created.id(), created.email());
         return new UserResponse(created.id(), created.email(), created.displayName());
     }
 
@@ -144,7 +150,11 @@ public class UserControllerAdapter {
         int effectiveSize = size != null ? size : apiPaginationProperties.getDefaultSize();
         boolean effectivePageable = pageable != null ? pageable : apiPaginationProperties.isDefaultPageable();
 
+        logger.info("Fetching users: page={}, size={}, pageable={}", effectivePage, effectiveSize, effectivePageable);
         PagedUsers pagedUsers = getAllUsersPort.getAll(effectivePage, effectiveSize, effectivePageable);
+        logger.info("Users fetched: totalElements={}, totalPages={}, pageSize={}",
+                pagedUsers.totalElements(), pagedUsers.totalPages(), pagedUsers.pageSize());
+
         return new PagedUserResponse(
                 pagedUsers.content().stream()
                         .map(user -> new UserResponse(user.id(), user.email(), user.displayName()))
@@ -171,7 +181,9 @@ public class UserControllerAdapter {
     public UserResponse getById(
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable("id") Long id) {
+        logger.info("Fetching user: id={}", id);
         User user = getUserPort.getById(id);
+        logger.info("User fetched successfully: id={}, email={}", user.id(), user.email());
         return new UserResponse(user.id(), user.email(), user.displayName());
     }
 
@@ -196,7 +208,9 @@ public class UserControllerAdapter {
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable("id") Long id,
             @Valid @RequestBody UpdateUserRequest request) {
+        logger.info("Updating user: id={}, email={}", id, request.email());
         User updated = updateUserPort.update(id, request.email(), request.displayName());
+        logger.info("User updated successfully: id={}, email={}", updated.id(), updated.email());
         return new UserResponse(updated.id(), updated.email(), updated.displayName());
     }
 
@@ -225,7 +239,9 @@ public class UserControllerAdapter {
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable("id") Long id,
             @Valid @RequestBody PatchUserRequest request) {
+        logger.info("Patching user: id={}, email={}, displayName={}", id, request.email(), request.displayName());
         User patched = patchUserPort.patch(id, request.email(), request.displayName());
+        logger.info("User patched successfully: id={}, email={}", patched.id(), patched.email());
         return new UserResponse(patched.id(), patched.email(), patched.displayName());
     }
 
@@ -242,6 +258,8 @@ public class UserControllerAdapter {
     public void delete(
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable("id") Long id) {
+        logger.info("Deleting user: id={}", id);
         deleteUserPort.deleteById(id);
+        logger.info("User deleted successfully: id={}", id);
     }
 }

@@ -11,6 +11,8 @@ import com.example.user.port.in.GetUserAccountsPort;
 import com.example.user.port.in.TopUpAccountPort;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +39,7 @@ import java.util.List;
 @RequestMapping("/api/v1/users/{userId}/accounts")
 public class AccountControllerAdapter {
 
+    private static final Logger logger = LoggerFactory.getLogger(AccountControllerAdapter.class);
     private static final String METRIC_NAME = "account.operations";
 
     private final CreateAccountPort createAccountPort;
@@ -65,32 +68,55 @@ public class AccountControllerAdapter {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AccountResponse create(@PathVariable("userId") Long userId, @Valid @RequestBody CreateAccountRequest request) {
+        logger.info("flow_stage=REQUEST_RECEIVED operation=account.create userId={} accountName={} status=INITIATED", userId, request.name());
+
         Account created = createAccountPort.create(userId, request.name());
+        logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=account.create userId={} accountName={} accountId={} status=SUCCESS", userId, request.name(), created.id());
+
         meterRegistry.counter(METRIC_NAME, "operation", "create").increment();
+        logger.info("flow_stage=RESPONSE_PREPARED operation=account.create userId={} accountId={} accountBalance={} status=COMPLETED", userId, created.id(), created.balance());
+
         return toResponse(created);
     }
 
     @GetMapping
     public List<AccountResponse> getAllByUserId(@PathVariable("userId") Long userId) {
+        logger.info("flow_stage=REQUEST_RECEIVED operation=account.getAll userId={} status=INITIATED", userId);
+
         List<AccountResponse> result = getUserAccountsPort.getAllByUserId(userId).stream()
                 .map(this::toResponse)
                 .toList();
+        logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=account.getAll userId={} accountCount={} status=SUCCESS", userId, result.size());
+
         meterRegistry.counter(METRIC_NAME, "operation", "get-all").increment();
+        logger.info("flow_stage=RESPONSE_PREPARED operation=account.getAll userId={} totalAccounts={} status=COMPLETED", userId, result.size());
+
         return result;
     }
 
     @GetMapping("/{accountId}")
     public AccountResponse getById(@PathVariable("userId") Long userId, @PathVariable("accountId") Long accountId) {
+        logger.info("flow_stage=REQUEST_RECEIVED operation=account.getById userId={} accountId={} status=INITIATED", userId, accountId);
+
         AccountResponse response = toResponse(getAccountPort.getById(userId, accountId));
+        logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=account.getById userId={} accountId={} accountName={} status=SUCCESS", userId, accountId, response.name());
+
         meterRegistry.counter(METRIC_NAME, "operation", "get-by-id").increment();
+        logger.info("flow_stage=RESPONSE_PREPARED operation=account.getById userId={} accountId={} accountBalance={} status=COMPLETED", userId, accountId, response.balance());
+
         return response;
     }
 
     @DeleteMapping("/{accountId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable("userId") Long userId, @PathVariable("accountId") Long accountId) {
+        logger.info("flow_stage=REQUEST_RECEIVED operation=account.delete userId={} accountId={} status=INITIATED", userId, accountId);
+
         deleteAccountPort.deleteById(userId, accountId);
+        logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=account.delete userId={} accountId={} status=SUCCESS", userId, accountId);
+
         meterRegistry.counter(METRIC_NAME, "operation", "delete").increment();
+        logger.info("flow_stage=RESPONSE_PREPARED operation=account.delete userId={} accountId={} status=COMPLETED", userId, accountId);
     }
 
     @PostMapping("/{accountId}/topup")
@@ -99,8 +125,14 @@ public class AccountControllerAdapter {
             @PathVariable("accountId") Long accountId,
             @Valid @RequestBody TopUpAccountRequest request
     ) {
+        logger.info("flow_stage=REQUEST_RECEIVED operation=account.topup userId={} accountId={} topupAmount={} status=INITIATED", userId, accountId, request.amount());
+
         Account account = topUpAccountPort.topUp(userId, accountId, request.amount());
+        logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=account.topup userId={} accountId={} topupAmount={} newBalance={} status=SUCCESS", userId, accountId, request.amount(), account.balance());
+
         meterRegistry.counter(METRIC_NAME, "operation", "topup").increment();
+        logger.info("flow_stage=RESPONSE_PREPARED operation=account.topup userId={} accountId={} finalBalance={} status=COMPLETED", userId, accountId, account.balance());
+
         return toResponse(account);
     }
 

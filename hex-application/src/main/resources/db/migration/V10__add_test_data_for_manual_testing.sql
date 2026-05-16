@@ -165,34 +165,34 @@ AND NOT EXISTS (
     SELECT 1 FROM payments WHERE product_id = p.id AND status = 'FAILED' LIMIT 1
 );
 
--- REFUNDED payment
+-- COMPLETED payment (refunded)
 INSERT INTO payments (product_id, quantity, total_amount, currency, status, payment_method)
 SELECT
     p.id,
     2,
     p.price * 2,
     p.currency,
-    'REFUNDED',
+    'COMPLETED',
     'PAYPAL'
 FROM products p
 WHERE LOWER(p.name) = LOWER('Cat Playground Structure')
 AND NOT EXISTS (
-    SELECT 1 FROM payments WHERE product_id = p.id AND status = 'REFUNDED' LIMIT 1
+    SELECT 1 FROM payments WHERE product_id = p.id AND status = 'COMPLETED' AND payment_method = 'PAYPAL' LIMIT 1
 );
 
--- CANCELLED payment
+-- FAILED payment (cancelled)
 INSERT INTO payments (product_id, quantity, total_amount, currency, status, payment_method)
 SELECT
     p.id,
     1,
     p.price,
     p.currency,
-    'CANCELLED',
+    'FAILED',
     'BANK_ACCOUNT'
 FROM products p
 WHERE LOWER(p.name) = LOWER('Digital Art License - Premium')
 AND NOT EXISTS (
-    SELECT 1 FROM payments WHERE product_id = p.id AND status = 'CANCELLED' LIMIT 1
+    SELECT 1 FROM payments WHERE product_id = p.id AND status = 'FAILED' AND payment_method = 'BANK_ACCOUNT' LIMIT 1
 );
 
 

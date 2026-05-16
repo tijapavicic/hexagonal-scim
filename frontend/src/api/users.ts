@@ -3,6 +3,13 @@ import type { UserDto, CreateUserDto, UpdateUserDto } from '../types/user.dto';
 
 const BASE = '/api/v1/users';
 
+/** Response format from /api/v1/users/all endpoint */
+interface UserAllResponse {
+  id: number;
+  email: string;
+  displayName: string;
+}
+
 /**
  * List users — backend returns a plain array (no pagination envelope).
  * The caller tracks page/size state and determines whether more pages exist
@@ -10,6 +17,11 @@ const BASE = '/api/v1/users';
  */
 export async function listUsers(page = 0, size = 10): Promise<UserDto[]> {
   return getJson<UserDto[]>(`${BASE}?page=${page}&size=${size}`);
+}
+
+/** Fetch all users without pagination (admin only). Throws if not authorized. */
+export async function getAllUsersAdminOnly(): Promise<UserAllResponse[]> {
+  return getJson<UserAllResponse[]>(`${BASE}/all`);
 }
 
 /** Fetch a single user by numeric ID. */

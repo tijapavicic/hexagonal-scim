@@ -30,6 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -166,6 +169,46 @@ public class UserControllerAdapter {
                 pagedUsers.pageNumber() < pagedUsers.totalPages() - 1,
                 pagedUsers.pageNumber() > 0
         );
+    }
+
+    @Operation(
+            summary = "Get all users (admin only)",
+            description = """
+                    Returns ALL users in the database without pagination.
+                    Requires 'admin' role. Returns 403 Forbidden if user lacks admin role.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "All users returned",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = java.util.List.class))),
+            @ApiResponse(responseCode = "403", description = "Admin role required",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/all")
+    public java.util.List<UserResponse> getAllUsersAdminOnly() {
+        // Check if user has admin role
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication()
+                .getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(auth -> auth.equals("ROLE_admin") || auth.equals("admin"));
+
+        if (!isAdmin) {
+            logger.warn("flow_stage=AUTHORIZATION_DENIED operation=users.getAllAdmin status=FORBIDDEN reason=missing_admin_role");
+            throw new AccessDeniedException("you are not authorized");
+        }
+
+        logger.info("flow_stage=REQUEST_RECEIVED operation=users.getAllAdmin status=INITIATED");
+        PagedUsers allUsers = getAllUsersPort.getAll(0, Integer.MAX_VALUE, false);
+        logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=users.getAllAdmin totalUsers={} status=SUCCESS", allUsers.totalElements());
+
+        java.util.List<UserResponse> result = allUsers.content().stream()
+                .map(user -> new UserResponse(user.id(), user.email(), user.displayName()))
+                .toList();
+        logger.info("flow_stage=RESPONSE_PREPARED operation=users.getAllAdmin userCount={} status=COMPLETED", result.size());
+
+        return result;
     }
 
     @Operation(summary = "Get user by ID", description = "Returns a single user by their numeric ID.")

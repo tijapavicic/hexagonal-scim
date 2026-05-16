@@ -79,8 +79,10 @@ class ScimAppElement extends HTMLElement {
         break;
       case '#/home':
       default: {
-        const homePage = document.createElement('home-page') as HTMLElement & { username: string };
-        homePage.username = getAuthProfile().preferredUsername;
+        const homePage = document.createElement('home-page') as HTMLElement & { username: string; roles: string[] };
+        const profile = getAuthProfile();
+        homePage.username = profile.preferredUsername;
+        homePage.roles = profile.realmRoles;
         content.replaceChildren(homePage);
         break;
       }

@@ -42,11 +42,35 @@ export const HOME_PAGE_STYLES = `
   }
   .card.link-card:focus-visible { outline: 2px solid color-mix(in srgb, var(--scim-primary, #2563eb) 68%, white); outline-offset: 2px; }
 
+  .card.admin-card {
+    background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+    border: 2px solid var(--scim-primary, #2563eb);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
   .card-icon  { font-size: 28px; margin-bottom: 10px; filter: saturate(1.1); }
   .card-label { font-size: 12px; font-weight: 700; color: var(--scim-text-muted, #6b7280); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
   .card-value { font-size: 30px; font-weight: 800; color: var(--scim-text, #0f172a); margin-bottom: 8px; letter-spacing: -0.02em; }
   .card-value-sm { font-size: 18px; }
   .card-link  { font-size: 13px; color: var(--scim-primary-strong, #1d4ed8); font-weight: 700; }
+
+  .admin-btn {
+    background: var(--scim-primary, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--scim-dur-fast, 140ms) var(--scim-ease, ease-out),
+                transform var(--scim-dur-fast, 140ms) var(--scim-ease, ease-out);
+  }
+  .admin-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+  .admin-btn:active { transform: translateY(0); }
+  .admin-btn:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
 
   .skeleton {
     display: inline-block;
@@ -58,10 +82,105 @@ export const HOME_PAGE_STYLES = `
     animation: shimmer 1.2s infinite;
     vertical-align: middle;
   }
+
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fade-in 160ms ease-out;
+  }
+
+  .modal-content {
+    background: var(--scim-surface, #fff);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--scim-shadow-lg, 0 20px 25px rgba(15,23,42,.15));
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background var(--scim-dur-fast, 140ms);
+  }
+  .modal-close:hover { background: var(--scim-border, #e5e7eb); }
+
+  .modal-header {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--scim-text, #0f172a);
+  }
+
+  .modal-loading, .modal-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--scim-text-muted, #6b7280);
+    font-size: 14px;
+  }
+
+  .modal-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .modal-users-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .user-item {
+    background: var(--scim-border, #f3f4f6);
+    border-radius: 8px;
+    padding: 12px 16px;
+    border: 1px solid var(--scim-border, #e5e7eb);
+  }
+
+  .user-name {
+    font-weight: 600;
+    color: var(--scim-text, #0f172a);
+    margin-bottom: 4px;
+  }
+
+  .user-email {
+    font-size: 12px;
+    color: var(--scim-text-muted, #6b7280);
+  }
+
   @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
   @keyframes card-in {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
   .error-chip {
@@ -71,7 +190,7 @@ export const HOME_PAGE_STYLES = `
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .welcome, .card, .card.link-card, .skeleton { animation: none; transition: none; }
+    .welcome, .card, .card.link-card, .skeleton, .modal { animation: none; transition: none; }
   }
 `;
 

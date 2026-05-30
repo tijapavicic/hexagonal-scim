@@ -27,7 +27,7 @@ public class UserService
         if (userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
-        return userRepositoryPort.save(new User(null, email, displayName));
+        return userRepositoryPort.save(User.createBuyer(null, email, displayName));
     }
 
     @Override
@@ -52,7 +52,18 @@ public class UserService
         if (!existing.email().equalsIgnoreCase(email) && userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
-        return userRepositoryPort.update(new User(id, email, displayName));
+        return userRepositoryPort.update(new User(
+                id,
+                email,
+                displayName,
+                existing.isSeller(),
+                existing.sellerDisplayName(),
+                existing.sellerBio(),
+                existing.sellerRating(),
+                existing.sellerReviewCount(),
+                existing.sellerVerifiedAt(),
+                existing.sellerJoinedAt()
+        ));
     }
 
     @Override
@@ -65,7 +76,18 @@ public class UserService
                 && userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
-        return userRepositoryPort.update(new User(id, newEmail, newDisplayName));
+        return userRepositoryPort.update(new User(
+                id,
+                newEmail,
+                newDisplayName,
+                existing.isSeller(),
+                existing.sellerDisplayName(),
+                existing.sellerBio(),
+                existing.sellerRating(),
+                existing.sellerReviewCount(),
+                existing.sellerVerifiedAt(),
+                existing.sellerJoinedAt()
+        ));
     }
 
     @Override
@@ -76,5 +98,3 @@ public class UserService
         userRepositoryPort.deleteById(id);
     }
 }
-
-

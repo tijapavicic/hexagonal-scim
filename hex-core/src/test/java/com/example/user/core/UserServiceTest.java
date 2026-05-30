@@ -328,7 +328,18 @@ class UserServiceTest {
         @Override
         public User save(User user) {
             long id = sequence.incrementAndGet();
-            User saved = new User(id, user.email(), user.displayName());
+            User saved = new User(
+                    id,
+                    user.email(),
+                    user.displayName(),
+                    user.isSeller(),
+                    user.sellerDisplayName(),
+                    user.sellerBio(),
+                    user.sellerRating(),
+                    user.sellerReviewCount(),
+                    user.sellerVerifiedAt(),
+                    user.sellerJoinedAt()
+            );
             store.put(id, saved);
             return saved;
         }
@@ -375,6 +386,13 @@ class UserServiceTest {
         public void deleteById(Long id) {
             store.remove(id);
         }
+
+        @Override
+        public Optional<User> findBySellerDisplayName(String sellerDisplayName) {
+            return store.values().stream()
+                    .filter(u -> u.sellerDisplayName() != null)
+                    .filter(u -> sellerDisplayName.equalsIgnoreCase(u.sellerDisplayName()))
+                    .findFirst();
+        }
     }
 }
-

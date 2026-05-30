@@ -44,7 +44,7 @@ class UserRepositoryAdapterTest {
         when(userJpaRepository.save(any(UserEntity.class))).thenReturn(savedEntity);
         when(userJpaRepository.findById(10L)).thenReturn(Optional.of(savedEntity));
 
-        User saved = adapter.save(new User(null, "bob@example.com", "Bob"));
+        User saved = adapter.save(User.createBuyer(null, "bob@example.com", "Bob"));
 
         assertEquals(10L, saved.id());
         assertEquals("bob@example.com", adapter.findById(saved.id()).orElseThrow().email());
@@ -207,7 +207,7 @@ class UserRepositoryAdapterTest {
         when(userJpaRepository.findById(4L)).thenReturn(Optional.of(existing));
         when(userJpaRepository.save(existing)).thenReturn(existing);
 
-        User updated = adapter.update(new User(4L, "after@example.com", "After"));
+        User updated = adapter.update(User.createBuyer(4L, "after@example.com", "After"));
 
         assertEquals("after@example.com", updated.email());
         assertEquals("After", updated.displayName());
@@ -222,7 +222,7 @@ class UserRepositoryAdapterTest {
         when(userJpaRepository.findById(99999L)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
-                () -> adapter.update(new User(99999L, "ghost@example.com", "Ghost")));
+                () -> adapter.update(User.createBuyer(99999L, "ghost@example.com", "Ghost")));
     }
 
     // ─── delete ───────────────────────────────────────────────────────────────

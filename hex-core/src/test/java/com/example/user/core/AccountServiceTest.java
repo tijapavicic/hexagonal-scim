@@ -24,7 +24,7 @@ class AccountServiceTest {
     @Test
     void createStoresAccountForExistingUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
 
@@ -46,7 +46,7 @@ class AccountServiceTest {
     @Test
     void createRejectsDuplicateAccountNamePerUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         service.create(1L, "Main account");
@@ -57,7 +57,7 @@ class AccountServiceTest {
     @Test
     void getAllReturnsAccountsForUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         service.create(1L, "Main account");
@@ -71,8 +71,8 @@ class AccountServiceTest {
     @Test
     void getByIdThrowsWhenAccountDoesNotBelongToUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
-        users.save(new User(null, "jane@example.com", "Jane"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "jane@example.com", "Jane"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -83,7 +83,7 @@ class AccountServiceTest {
     @Test
     void deleteRemovesAccount() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -96,7 +96,7 @@ class AccountServiceTest {
     @Test
     void topUpIncreasesBalance() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -109,7 +109,7 @@ class AccountServiceTest {
     @Test
     void topUpRejectsNegativeAmount() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(new User(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -125,10 +125,21 @@ class AccountServiceTest {
         @Override
         public User save(User user) {
             long id = sequence.incrementAndGet();
-            User saved = new User(id, user.email(), user.displayName());
-            store.put(id, saved);
-            return saved;
-        }
+            User saved = new User(
+                    id,
+                    user.email(),
+                    user.displayName(),
+                    user.isSeller(),
+                    user.sellerDisplayName(),
+                    user.sellerBio(),
+                    user.sellerRating(),
+                    user.sellerReviewCount(),
+                    user.sellerVerifiedAt(),
+                    user.sellerJoinedAt()
+            );
+             store.put(id, saved);
+             return saved;
+         }
 
         @Override
         public Optional<User> findById(Long id) {
@@ -140,6 +151,14 @@ class AccountServiceTest {
             return store.values().stream()
                     .filter(u -> u.email().equalsIgnoreCase(email))
                     .findFirst();
+        }
+
+        @Override
+        public Optional<User> findBySellerDisplayName(String sellerDisplayName) {
+            return store.values().stream()
+                    .filter(u -> u.sellerDisplayName() != null)
+                    .filter(u -> sellerDisplayName.equalsIgnoreCase(u.sellerDisplayName()))
+                     .findFirst();
         }
 
         @Override

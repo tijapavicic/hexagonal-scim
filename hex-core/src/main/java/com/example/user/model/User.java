@@ -260,12 +260,12 @@ public record User(
     }
 
     /**
-     * Check if user is a seller.
+     * Convenience helper for boolean seller checks.
      *
-     * @return true if user has seller capabilities enabled
+     * @return true when seller capability is enabled
      */
-    public boolean isSeller() {
-        return this.isSeller != null && this.isSeller;
+    public boolean sellerEnabled() {
+        return Boolean.TRUE.equals(this.isSeller);
     }
 
     /**
@@ -276,7 +276,6 @@ public record User(
      * @return true if seller is verified
      */
     public boolean isSellerVerified() {
-        return isSeller() && this.sellerVerifiedAt != null;
+        return sellerEnabled() && this.sellerVerifiedAt != null;
     }
 }
-

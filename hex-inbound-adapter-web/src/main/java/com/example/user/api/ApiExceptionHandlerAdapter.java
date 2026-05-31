@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
@@ -79,6 +80,28 @@ public class ApiExceptionHandlerAdapter {
         // Root cause may contain low-level parse details — don't expose to client
         log.debug("Unreadable request body on {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return error("MALFORMED_REQUEST", "Request body is missing or cannot be parsed", req);
+    }
+
+    /**
+     * Handles {@link MethodArgumentTypeMismatchException} thrown when path/query parameters
+     * cannot be converted to the expected type (e.g., passing UUID string when Long is expected).
+     * Returns clear error message indicating the expected type.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        String paramName = ex.getName();
+        String providedValue = ex.getValue() != null ? ex.getValue().toString() : "null";
+        String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown";
+        
+        log.warn("Type mismatch on {} {}: param='{}', provided='{}', expected={}",
+                req.getMethod(), req.getRequestURI(), paramName, providedValue, expectedType);
+        
+        String message = String.format(
+            "Invalid value '%s' for parameter '%s': expected %s",
+            providedValue, paramName, expectedType
+        );
+        return error("INVALID_PARAMETER_TYPE", message, req);
     }
 
     // ─── Domain invariant violations ─────────────────────────────────────────

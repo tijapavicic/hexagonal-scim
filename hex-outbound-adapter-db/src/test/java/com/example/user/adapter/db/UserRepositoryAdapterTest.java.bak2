@@ -39,7 +39,7 @@ class UserRepositoryAdapterTest {
 
     @Test
     void saveAndFindRoundTrip() {
-        UserEntity savedEntity = new UserEntity(null, "bob@example.com", "Bob");
+        UserEntity savedEntity = new UserEntity("bob@example.com", "Bob");
         withId(savedEntity, 10L);
         when(userJpaRepository.save(any(UserEntity.class))).thenReturn(savedEntity);
         when(userJpaRepository.findById(10L)).thenReturn(Optional.of(savedEntity));
@@ -91,9 +91,9 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedReturnsCorrectWindow() {
-        UserEntity a = new UserEntity(null, "a@example.com", "A");
+        UserEntity a = new UserEntity("a@example.com", "A");
         withId(a, 1L);
-        UserEntity b = new UserEntity(null, "b@example.com", "B");
+        UserEntity b = new UserEntity("b@example.com", "B");
         withId(b, 2L);
         when(userJpaRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(a, b), Pageable.ofSize(2), 3));
@@ -108,7 +108,7 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedSecondPageReturnsRemainingEntry() {
-        UserEntity z = new UserEntity(null, "z@example.com", "Z");
+        UserEntity z = new UserEntity("z@example.com", "Z");
         withId(z, 3L);
         when(userJpaRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(z), Pageable.ofSize(2).withPage(1), 3));

@@ -14,6 +14,9 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "keycloak_id", unique = true)
+    private String keycloakId;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -23,13 +26,22 @@ public class UserEntity {
     protected UserEntity() {
     }
 
-    public UserEntity(String email, String displayName) {
+    public UserEntity(String keycloakId, String email, String displayName) {
+        this.keycloakId = keycloakId;
         this.email = email;
         this.displayName = displayName;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public String getKeycloakId() {
+        return keycloakId;
+    }
+
+    public void setKeycloakId(String keycloakId) {
+        this.keycloakId = keycloakId;
     }
 
     public String getEmail() {

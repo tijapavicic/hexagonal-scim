@@ -27,7 +27,7 @@ public class UserService
         if (userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
-        return userRepositoryPort.save(User.createBuyer(null, email, displayName));
+        return userRepositoryPort.save(User.createBuyer(null, null, email, displayName));
     }
 
     @Override
@@ -54,6 +54,7 @@ public class UserService
         }
         return userRepositoryPort.update(new User(
                 id,
+                existing.keycloakId(),
                 email,
                 displayName,
                 existing.isSeller(),
@@ -78,6 +79,7 @@ public class UserService
         }
         return userRepositoryPort.update(new User(
                 id,
+                existing.keycloakId(),
                 newEmail,
                 newDisplayName,
                 existing.isSeller(),

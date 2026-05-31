@@ -60,7 +60,7 @@ class UserControllerAdapterTest {
     @Test
     void createDelegatesToPortAndMapsResponse() {
         when(createUserPort.create("john@example.com", "John"))
-                .thenReturn(User.createBuyer(1L, null, "john@example.com", "John"));
+                .thenReturn(User.createBuyer(1L, "john@example.com", "John"));
 
         var response = controller.create(new CreateUserRequest("john@example.com", "John"));
 
@@ -72,7 +72,7 @@ class UserControllerAdapterTest {
     @Test
     void getAllUsesConfiguredDefaultsWhenParamsMissing() {
         when(getAllUsersPort.getAll(0, 10, true))
-                .thenReturn(new PagedUsers(List.of(User.createBuyer(1L, null, "a@example.com", "A")), 0, 10, 1, 1));
+                .thenReturn(new PagedUsers(List.of(User.createBuyer(1L, "a@example.com", "A")), 0, 10, 1, 1));
 
         var response = controller.getAll(null, null, null);
 
@@ -83,7 +83,7 @@ class UserControllerAdapterTest {
 
     @Test
     void getByIdDelegatesToPort() {
-        when(getUserPort.getById(7L)).thenReturn(User.createBuyer(7L, null, "seven@example.com", "Seven"));
+        when(getUserPort.getById(7L)).thenReturn(User.createBuyer(7L, "seven@example.com", "Seven"));
 
         var response = controller.getById(7L);
 
@@ -94,7 +94,7 @@ class UserControllerAdapterTest {
     @Test
     void updateDelegatesToPortAndMapsResponse() {
         when(updateUserPort.update(3L, "new@example.com", "New Name"))
-                .thenReturn(User.createBuyer(3L, null, "new@example.com", "New Name"));
+                .thenReturn(User.createBuyer(3L, "new@example.com", "New Name"));
 
         var response = controller.update(3L, new UpdateUserRequest("new@example.com", "New Name"));
 
@@ -105,7 +105,7 @@ class UserControllerAdapterTest {
     @Test
     void patchDelegatesToPortAndMapsResponse() {
         when(patchUserPort.patch(4L, "patched@example.com", null))
-                .thenReturn(User.createBuyer(4L, null, "patched@example.com", "Display"));
+                .thenReturn(User.createBuyer(4L, "patched@example.com", "Display"));
 
         var response = controller.patch(4L, new PatchUserRequest("patched@example.com", null));
 

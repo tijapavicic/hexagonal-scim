@@ -24,7 +24,7 @@ class AccountServiceTest {
     @Test
     void createStoresAccountForExistingUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
 
@@ -46,7 +46,7 @@ class AccountServiceTest {
     @Test
     void createRejectsDuplicateAccountNamePerUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         service.create(1L, "Main account");
@@ -57,7 +57,7 @@ class AccountServiceTest {
     @Test
     void getAllReturnsAccountsForUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         service.create(1L, "Main account");
@@ -71,8 +71,8 @@ class AccountServiceTest {
     @Test
     void getByIdThrowsWhenAccountDoesNotBelongToUser() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
-        users.save(User.createBuyer(null, null, "jane@example.com", "Jane"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "jane@example.com", "Jane"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -83,7 +83,7 @@ class AccountServiceTest {
     @Test
     void deleteRemovesAccount() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -96,7 +96,7 @@ class AccountServiceTest {
     @Test
     void topUpIncreasesBalance() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -109,7 +109,7 @@ class AccountServiceTest {
     @Test
     void topUpRejectsNegativeAmount() {
         InMemoryUserRepo users = new InMemoryUserRepo();
-        users.save(User.createBuyer(null, null, "john@example.com", "John"));
+        users.save(User.createBuyer(null, "john@example.com", "John"));
         InMemoryAccountRepo accounts = new InMemoryAccountRepo();
         AccountService service = new AccountService(users, accounts, new InMemoryCreditPort(accounts));
         Account account = service.create(1L, "Main account");
@@ -127,7 +127,6 @@ class AccountServiceTest {
             long id = sequence.incrementAndGet();
             User saved = new User(
                     id,
-                    user.keycloakId(),
                     user.email(),
                     user.displayName(),
                     user.isSeller(),

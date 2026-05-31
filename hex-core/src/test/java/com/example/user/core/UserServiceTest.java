@@ -330,6 +330,7 @@ class UserServiceTest {
             long id = sequence.incrementAndGet();
             User saved = new User(
                     id,
+                    user.keycloakId(),
                     user.email(),
                     user.displayName(),
                     user.isSeller(),

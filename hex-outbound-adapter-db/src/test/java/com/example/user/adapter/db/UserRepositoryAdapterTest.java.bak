@@ -39,12 +39,12 @@ class UserRepositoryAdapterTest {
 
     @Test
     void saveAndFindRoundTrip() {
-        UserEntity savedEntity = new UserEntity(null, "bob@example.com", "Bob");
+        UserEntity savedEntity = new UserEntity("bob@example.com", "Bob");
         withId(savedEntity, 10L);
         when(userJpaRepository.save(any(UserEntity.class))).thenReturn(savedEntity);
         when(userJpaRepository.findById(10L)).thenReturn(Optional.of(savedEntity));
 
-        User saved = adapter.save(User.createBuyer(null, null, "bob@example.com", "Bob"));
+        User saved = adapter.save(User.createBuyer(null, "bob@example.com", "Bob"));
 
         assertEquals(10L, saved.id());
         assertEquals("bob@example.com", adapter.findById(saved.id()).orElseThrow().email());
@@ -91,9 +91,9 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedReturnsCorrectWindow() {
-        UserEntity a = new UserEntity(null, "a@example.com", "A");
+        UserEntity a = new UserEntity("a@example.com", "A");
         withId(a, 1L);
-        UserEntity b = new UserEntity(null, "b@example.com", "B");
+        UserEntity b = new UserEntity("b@example.com", "B");
         withId(b, 2L);
         when(userJpaRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(a, b), Pageable.ofSize(2), 3));
@@ -108,7 +108,7 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllPagedSecondPageReturnsRemainingEntry() {
-        UserEntity z = new UserEntity(null, "z@example.com", "Z");
+        UserEntity z = new UserEntity("z@example.com", "Z");
         withId(z, 3L);
         when(userJpaRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(z), Pageable.ofSize(2).withPage(1), 3));
@@ -122,15 +122,15 @@ class UserRepositoryAdapterTest {
 
     @Test
     void pageSizeIsClampedToMax100() {
-        UserEntity u1 = new UserEntity(null, "clamp1@example.com", "U1");
+        UserEntity u1 = new UserEntity("clamp1@example.com", "U1");
         withId(u1, 1L);
-        UserEntity u2 = new UserEntity(null, "clamp2@example.com", "U2");
+        UserEntity u2 = new UserEntity("clamp2@example.com", "U2");
         withId(u2, 2L);
-        UserEntity u3 = new UserEntity(null, "clamp3@example.com", "U3");
+        UserEntity u3 = new UserEntity("clamp3@example.com", "U3");
         withId(u3, 3L);
-        UserEntity u4 = new UserEntity(null, "clamp4@example.com", "U4");
+        UserEntity u4 = new UserEntity("clamp4@example.com", "U4");
         withId(u4, 4L);
-        UserEntity u5 = new UserEntity(null, "clamp5@example.com", "U5");
+        UserEntity u5 = new UserEntity("clamp5@example.com", "U5");
         withId(u5, 5L);
         when(userJpaRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(u1, u2, u3, u4, u5), Pageable.ofSize(100), 5));
@@ -144,7 +144,7 @@ class UserRepositoryAdapterTest {
 
     @Test
     void negativePageNumberIsClampedToZero() {
-        UserEntity entity = new UserEntity(null, "neg@example.com", "Neg");
+        UserEntity entity = new UserEntity("neg@example.com", "Neg");
         withId(entity, 1L);
         when(userJpaRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(entity), Pageable.ofSize(10), 1));
@@ -168,11 +168,11 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllUnpagedReturnsEveryRow() {
-        UserEntity x = new UserEntity(null, "x@example.com", "X");
+        UserEntity x = new UserEntity("x@example.com", "X");
         withId(x, 1L);
-        UserEntity y = new UserEntity(null, "y@example.com", "Y");
+        UserEntity y = new UserEntity("y@example.com", "Y");
         withId(y, 2L);
-        UserEntity z = new UserEntity(null, "z@example.com", "Z");
+        UserEntity z = new UserEntity("z@example.com", "Z");
         withId(z, 3L);
         when(userJpaRepository.findAll(any(Sort.class))).thenReturn(List.of(x, y, z));
 
@@ -183,11 +183,11 @@ class UserRepositoryAdapterTest {
 
     @Test
     void findAllUnpagedIsSortedByIdAscending() {
-        UserEntity a = new UserEntity(null, "first@example.com", "First");
+        UserEntity a = new UserEntity("first@example.com", "First");
         withId(a, 1L);
-        UserEntity b = new UserEntity(null, "second@example.com", "Second");
+        UserEntity b = new UserEntity("second@example.com", "Second");
         withId(b, 2L);
-        UserEntity c = new UserEntity(null, "third@example.com", "Third");
+        UserEntity c = new UserEntity("third@example.com", "Third");
         withId(c, 3L);
         when(userJpaRepository.findAll(any(Sort.class))).thenReturn(List.of(a, b, c));
 
@@ -202,12 +202,12 @@ class UserRepositoryAdapterTest {
 
     @Test
     void updatePersistsFieldChanges() {
-        UserEntity existing = new UserEntity(null, "before@example.com", "Before");
+        UserEntity existing = new UserEntity("before@example.com", "Before");
         withId(existing, 4L);
         when(userJpaRepository.findById(4L)).thenReturn(Optional.of(existing));
         when(userJpaRepository.save(existing)).thenReturn(existing);
 
-        User updated = adapter.update(User.createBuyer(4L, null, "after@example.com", "After"));
+        User updated = adapter.update(User.createBuyer(4L, "after@example.com", "After"));
 
         assertEquals("after@example.com", updated.email());
         assertEquals("After", updated.displayName());
@@ -222,7 +222,7 @@ class UserRepositoryAdapterTest {
         when(userJpaRepository.findById(99999L)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,
-                () -> adapter.update(User.createBuyer(99999L, null, "ghost@example.com", "Ghost")));
+                () -> adapter.update(User.createBuyer(99999L, "ghost@example.com", "Ghost")));
     }
 
     // ─── delete ───────────────────────────────────────────────────────────────

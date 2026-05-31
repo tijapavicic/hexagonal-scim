@@ -21,20 +21,20 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
 
     @Override
     public User save(User user) {
-        UserEntity saved = userJpaRepository.save(new UserEntity(user.email(), user.displayName()));
-        return User.createBuyer(saved.getId(), saved.getEmail(), saved.getDisplayName());
+        UserEntity saved = userJpaRepository.save(new UserEntity(user.keycloakId(), user.email(), user.displayName()));
+        return User.createBuyer(saved.getId(), saved.getKeycloakId(), saved.getEmail(), saved.getDisplayName());
     }
 
     @Override
     public Optional<User> findById(Long id) {
         return userJpaRepository.findById(id)
-                .map(entity -> User.createBuyer(entity.getId(), entity.getEmail(), entity.getDisplayName()));
+                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()));
     }
 
     @Override
     public Optional<User> findByEmail(String email) {
         return userJpaRepository.findByEmailIgnoreCase(email)
-                .map(entity -> User.createBuyer(entity.getId(), entity.getEmail(), entity.getDisplayName()));
+                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()));
     }
 
     @Override
@@ -57,7 +57,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
         Page<UserEntity> page = userJpaRepository.findAll(pageable);
 
         List<User> users = page.getContent().stream()
-                .map(entity -> User.createBuyer(entity.getId(), entity.getEmail(), entity.getDisplayName()))
+                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()))
                 .toList();
 
         return new PagedUsers(users, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
@@ -66,7 +66,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     @Override
     public List<User> findAll() {
         return userJpaRepository.findAll(Sort.by("id").ascending()).stream()
-                .map(entity -> User.createBuyer(entity.getId(), entity.getEmail(), entity.getDisplayName()))
+                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()))
                 .toList();
     }
 
@@ -87,10 +87,11 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     public User update(User user) {
         UserEntity entity = userJpaRepository.findById(user.id())
                 .orElseThrow(() -> new IllegalStateException("Entity not found for id: " + user.id()));
+        entity.setKeycloakId(user.keycloakId());
         entity.setEmail(user.email());
         entity.setDisplayName(user.displayName());
         UserEntity saved = userJpaRepository.save(entity);
-        return User.createBuyer(saved.getId(), saved.getEmail(), saved.getDisplayName());
+        return User.createBuyer(saved.getId(), saved.getKeycloakId(), saved.getEmail(), saved.getDisplayName());
     }
 
     @Override

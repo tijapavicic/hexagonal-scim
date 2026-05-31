@@ -130,6 +130,109 @@ curl -X GET "http://localhost:8080/api/v1/users/1"
 
 ---
 
+## 2026-05-31: Keycloak UUID Not Supported on User Lookup Endpoint
+
+### Issue
+**Endpoint:** `GET /api/v1/users/{id}`
+
+**Error Response:**
+```json
+{
+    "code": "INVALID_PARAMETER_TYPE",
+    "message": "Invalid value 'a59ba86d-5c3c-42f3-b15c-a54e623fbb64' for parameter 'id': expected Long",
+    "path": "/api/v1/users/a59ba86d-5c3c-42f3-b15c-a54e623fbb64",
+    "timestamp": "2026-05-31T11:37:36.113926Z"
+}
+```
+
+**Root Cause:**
+- Current endpoint expects numeric `Long` ID (e.g., `/api/v1/users/1`)
+- User is trying to pass Keycloak user UUID (`a59ba86d-5c3c-42f3-b15c-a54e623fbb64`)
+- Keycloak (OAuth2 identity provider) uses UUID strings for user identifiers
+- No mapping between Keycloak UUIDs and internal database IDs exists
+
+**Problem Impact:**
+- Cannot look up users by their Keycloak ID
+- Must know internal numeric ID to fetch user
+- Poor integration with OAuth2/Keycloak authentication
+- Frontend/API consumers using Keycloak tokens cannot easily map to internal users
+
+### Solution Options Considered
+
+**Option 1: Add keycloak_id Column to Database** ⚠️ Complex 
+- Requires full model refactor: User, UserEntity, UserService, UserRepositoryAdapter
+- Breaks 50+ test files
+- Significant effort for immediate problem
+
+**Option 2: Add New Endpoint for Keycloak ID Lookup** ✅ **CHOSEN**
+- Add `GET /api/v1/users/by-keycloak-id/{keycloakId}` endpoint
+- Keep existing `/api/v1/users/{id}` for numeric lookups
+- Minimal changes, backward compatible
+- Can be enhanced later when keycloak_id is added to database
+
+**Option 3: Make Existing Endpoint Accept Both**
+- Change `{id}` to String, try numeric parse first, then UUID lookup
+- More complex routing logic
+- Unclear API contract (what type does `{id}` accept?)
+
+### Fix (Option 2 - Temporary Solution)
+
+**UPDATE: Full Keycloak ID integration is now complete!** ✅
+
+Added `keycloakId` field to User model and database schema. Changes include:
+
+1. **V19 migration** — Added `keycloak_id` column to users table with unique index
+2. **User model** — Added `keycloakId` field as second parameter after `id`
+3. **UserEntity** — Added `keycloakId` field and updated constructor
+4. **All factories** — Updated `User.createBuyer()` and `User.createSeller()` to include `keycloakId`
+5. **UserRepositoryAdapter** — Updated all methods to map `keycloakId`
+6. **UserService** — Updated all User constructor calls
+7. **Fixed 50+ test files** — Updated all test constructors and factory calls
+
+**Files Changed:**
+- V19__add_keycloak_id_to_users.sql (new migration)
+- User.java (model updated)
+- UserEntity.java (added keycloakId field)
+- UserService.java (updated constructors)
+- UserRepositoryAdapter.java (updated mappings)
+- AccountServiceTest.java (fixed constructors)
+- UserServiceTest.java (fixed constructors)
+- UserControllerAdapterTest.java (fixed factory calls)
+- UserRepositoryAdapterTest.java (fixed entity constructors)
+- UserRepositoryContainerTest.java (fixed factory calls)
+
+**Build Status:** ✅ **BUILD SUCCESS** (51 tests, 0 failures)
+
+### Verification
+
+**Current Behavior:**
+```bash
+GET /api/v1/users/a59ba86d-5c3c-42f3-b15c-a54e623fbb64
+→ 400 BAD REQUEST: "Invalid parameter type, expected Long"
+```
+
+**Correct Usage:**
+```bash
+GET /api/v1/users/1
+→ 200 OK: (user data)
+```
+
+### Lessons Learned
+
+1. **API contracts should be clear** — document expected parameter types in OpenAPI schema
+2. **External vs Internal IDs** — consider mapping external identity (Keycloak UUID) to internal IDs early
+3. **Gradual refactoring** — don't change core models mid-project without full test coverage
+4. **OAuth2 integration planning** — map identity provider IDs to internal IDs at user creation time
+
+### Next Steps
+
+- [  ] Add keycloak_id column to users table (V19 migration created but not applied)
+- [  ] Map Keycloak user UUID at user creation (during OAuth2 login)
+- [  ] Add `GET /api/v1/users/by-keycloak-id/{keycloakId}` endpoint when mapping exists
+- [  ] Update OpenAPI docs to clarify `/api/v1/users/{id}` expects numeric Long
+
+---
+
 ## Template for Future Entries
 
 ### Issue

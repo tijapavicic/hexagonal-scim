@@ -33,7 +33,8 @@ import java.util.Objects;
  * - DIP: No Spring/infrastructure dependencies
  */
 public record User(
-    Long id,                      // Unique user ID
+    Long id,                      // Unique user ID (internal auto-increment)
+    String keycloakId,            // Keycloak user UUID (external identity)
     String email,                 // User email (unique)
     String displayName,           // User's account display name
     Boolean isSeller,             // Whether user is registered as seller
@@ -84,18 +85,20 @@ public record User(
      * Factory to create a regular buyer user.
      *
      * @param id user ID
+     * @param keycloakId Keycloak user UUID (can be null)
      * @param email user email
      * @param displayName display name
      * @return new User in buyer mode (not a seller)
      */
-    public static User createBuyer(Long id, String email, String displayName) {
-        return new User(id, email, displayName, false, null, null, null, null, null, null);
+    public static User createBuyer(Long id, String keycloakId, String email, String displayName) {
+        return new User(id, keycloakId, email, displayName, false, null, null, null, null, null, null);
     }
 
     /**
      * Factory to create a user and immediately register as seller.
      *
      * @param id user ID
+     * @param keycloakId Keycloak user UUID (can be null)
      * @param email user email
      * @param displayName user's account display name
      * @param sellerDisplayName seller's shop name
@@ -103,12 +106,12 @@ public record User(
      * @return new User in both buyer and seller mode
      */
     public static User createSeller(
-        Long id, String email, String displayName,
+        Long id, String keycloakId, String email, String displayName,
         String sellerDisplayName, String sellerBio
     ) {
         LocalDateTime now = LocalDateTime.now();
         return new User(
-            id, email, displayName,
+            id, keycloakId, email, displayName,
             true,                    // isSeller = true
             sellerDisplayName,
             sellerBio,
@@ -142,6 +145,7 @@ public record User(
 
         return new User(
             this.id,
+            this.keycloakId,
             this.email,
             this.displayName,
             true,                    // Enable seller
@@ -178,6 +182,7 @@ public record User(
 
         return new User(
             this.id,
+            this.keycloakId,
             this.email,
             this.displayName,
             true,
@@ -207,6 +212,7 @@ public record User(
 
         return new User(
             this.id,
+            this.keycloakId,
             this.email,
             this.displayName,
             true,
@@ -247,6 +253,7 @@ public record User(
 
         return new User(
             this.id,
+            this.keycloakId,
             this.email,
             this.displayName,
             true,

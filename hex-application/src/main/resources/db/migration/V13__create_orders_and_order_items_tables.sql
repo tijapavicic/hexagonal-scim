@@ -1,6 +1,6 @@
 -- V13__create_orders_and_order_items_tables.sql
 -- Create order aggregates for marketplace order management
--- Idempotent: uses WHERE NOT EXISTS checks and IF NOT EXISTS clauses
+-- H2-compatible: no COMMENT ON statements (PostgreSQL-specific)
 
 -- Create orders table (aggregate root)
 -- Represents a purchase from one buyer to one seller
@@ -45,19 +45,4 @@ CREATE TABLE IF NOT EXISTS order_items (
 -- Create indices for query performance
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
-
--- Add table comments
-COMMENT ON TABLE orders IS 'Represents a marketplace order from one buyer to one seller';
-COMMENT ON COLUMN orders.buyer_id IS 'User ID of the buyer (foreign key)';
-COMMENT ON COLUMN orders.seller_id IS 'User ID of the seller (foreign key)';
-COMMENT ON COLUMN orders.status IS 'Order lifecycle state: PENDING_PAYMENT -> PAID -> SHIPPED -> DELIVERED -> COMPLETED';
-COMMENT ON COLUMN orders.gross_amount IS 'Total purchase amount before commission';
-COMMENT ON COLUMN orders.commission_amount IS 'Platform commission (5% of gross_amount)';
-COMMENT ON COLUMN orders.seller_payout IS 'Amount seller receives after commission (95% of gross_amount)';
-
-COMMENT ON TABLE order_items IS 'Individual line items within an order';
-COMMENT ON COLUMN order_items.product_id IS 'Reference to the product being ordered';
-COMMENT ON COLUMN order_items.quantity IS 'Number of units ordered';
-COMMENT ON COLUMN order_items.unit_price IS 'Price per unit at time of order';
-COMMENT ON COLUMN order_items.subtotal IS 'quantity * unit_price';
 

@@ -1,7 +1,7 @@
 -- V18__create_seller_reviews_table.sql
 -- Track buyer reviews for sellers (ratings 1-5, comment)
 -- Used to calculate seller_rating displayed in their profile
--- Idempotent: uses WHERE NOT EXISTS checks and IF NOT EXISTS clauses
+-- H2-compatible: no COMMENT ON statements (PostgreSQL-specific)
 
 -- Create seller_reviews table
 -- Buyers can leave one review per seller they transacted with
@@ -27,13 +27,4 @@ CREATE INDEX IF NOT EXISTS idx_seller_reviews_seller_id ON seller_reviews(seller
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_buyer_id ON seller_reviews(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_rating ON seller_reviews(seller_id, rating);
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_created_at ON seller_reviews(seller_id, created_at DESC);
-
--- Add table comments
-COMMENT ON TABLE seller_reviews IS 'Buyer reviews for sellers (1-5 stars with optional comment)';
-COMMENT ON COLUMN seller_reviews.seller_id IS 'The seller being reviewed';
-COMMENT ON COLUMN seller_reviews.buyer_id IS 'Buyer who submitted the review';
-COMMENT ON COLUMN seller_reviews.rating IS 'Review rating: 1-5 stars (used in seller_rating calculation)';
-COMMENT ON COLUMN seller_reviews.title IS 'Short summary of review';
-COMMENT ON COLUMN seller_reviews.comment IS 'Detailed review comment';
-COMMENT ON COLUMN seller_reviews.helpful_count IS 'Number of users who found this review helpful';
 

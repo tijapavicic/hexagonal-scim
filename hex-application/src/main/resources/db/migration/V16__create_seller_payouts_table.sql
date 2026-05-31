@@ -1,6 +1,6 @@
 -- V16__create_seller_payouts_table.sql
 -- Track payout requests from sellers (withdrawal requests to bank/payment processor)
--- Idempotent: uses WHERE NOT EXISTS checks and IF NOT EXISTS clauses
+-- H2-compatible: no COMMENT ON statements (PostgreSQL-specific)
 
 -- Create seller_payouts table
 -- One record per payout request from seller
@@ -33,13 +33,4 @@ CREATE INDEX IF NOT EXISTS idx_seller_payouts_status ON seller_payouts(status);
 CREATE INDEX IF NOT EXISTS idx_seller_payouts_seller_status ON seller_payouts(seller_id, status);
 CREATE INDEX IF NOT EXISTS idx_seller_payouts_requested_at ON seller_payouts(requested_at DESC);
 CREATE INDEX IF NOT EXISTS idx_seller_payouts_transaction_ref ON seller_payouts(transaction_reference);
-
--- Add table comments
-COMMENT ON TABLE seller_payouts IS 'Payout request records: sellers request withdrawal of pending_payout balance';
-COMMENT ON COLUMN seller_payouts.seller_id IS 'Seller user ID';
-COMMENT ON COLUMN seller_payouts.amount IS 'Payout amount requested';
-COMMENT ON COLUMN seller_payouts.status IS 'Payout lifecycle: REQUESTED -> PROCESSING -> COMPLETED (or FAILED/CANCELLED)';
-COMMENT ON COLUMN seller_payouts.payout_method IS 'Destination: bank_transfer, stripe, paypal, etc.';
-COMMENT ON COLUMN seller_payouts.transaction_reference IS 'Reference from payment processor for tracking and reconciliation';
-COMMENT ON COLUMN seller_payouts.failure_reason IS 'Human-readable reason if payout failed';
 

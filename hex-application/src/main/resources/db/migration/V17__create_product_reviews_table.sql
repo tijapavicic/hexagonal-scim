@@ -1,6 +1,6 @@
 -- V17__create_product_reviews_table.sql
 -- Track buyer reviews for products (ratings 1-5, comment)
--- Idempotent: uses WHERE NOT EXISTS checks and IF NOT EXISTS clauses
+-- H2-compatible: no COMMENT ON statements (PostgreSQL-specific)
 
 -- Create product_reviews table
 -- Buyers can leave one review per product they purchased
@@ -26,13 +26,4 @@ CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(pro
 CREATE INDEX IF NOT EXISTS idx_product_reviews_buyer_id ON product_reviews(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_product_reviews_rating ON product_reviews(product_id, rating);
 CREATE INDEX IF NOT EXISTS idx_product_reviews_created_at ON product_reviews(product_id, created_at DESC);
-
--- Add table comments
-COMMENT ON TABLE product_reviews IS 'Buyer reviews for products (1-5 stars with optional comment)';
-COMMENT ON COLUMN product_reviews.product_id IS 'The product being reviewed';
-COMMENT ON COLUMN product_reviews.buyer_id IS 'Buyer who submitted the review';
-COMMENT ON COLUMN product_reviews.rating IS 'Review rating: 1-5 stars';
-COMMENT ON COLUMN product_reviews.title IS 'Short summary of review';
-COMMENT ON COLUMN product_reviews.comment IS 'Detailed review comment';
-COMMENT ON COLUMN product_reviews.helpful_count IS 'Number of users who found this review helpful';
 

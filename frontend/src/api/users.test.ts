@@ -19,12 +19,21 @@ vi.mock('./http', () => ({
   },
 }));
 
-import { listUsers, getUserById, createUser, updateUser, deleteUser } from './users';
+import { listUsers, getUserById, getUserByKeycloakId, createUser, updateUser, deleteUser } from './users';
 import type { UserDto } from '../types/user.dto';
 
 // ── Fixture ───────────────────────────────────────────────────────────────────
-const alice: UserDto = { id: 1, username: 'alice', email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith', active: true };
-const bob:   UserDto = { id: 2, username: 'bob',   email: 'bob@example.com',   firstName: 'Bob',   lastName: 'Jones', active: false };
+const alice: UserDto = {
+  id: 1,
+  email: 'alice@example.com',
+  displayName: 'Alice Smith',
+  keycloakId: 'a59ba86d-5c3c-42f3-b15c-a54e623fbb64'
+};
+const bob: UserDto = {
+  id: 2,
+  email: 'bob@example.com',
+  displayName: 'Bob Jones'
+};
 
 describe('api/users', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -71,19 +80,34 @@ describe('api/users', () => {
     });
   });
 
+  // ── getUserByKeycloakId ─────────────────────────────────────────────────────
+  describe('getUserByKeycloakId', () => {
+    it('calls GET /api/v1/users/by-keycloak-id/{keycloakId}', async () => {
+      getJsonMock.mockResolvedValue(alice);
+      const result = await getUserByKeycloakId('a59ba86d-5c3c-42f3-b15c-a54e623fbb64');
+      expect(getJsonMock).toHaveBeenCalledWith('/api/v1/users/by-keycloak-id/a59ba86d-5c3c-42f3-b15c-a54e623fbb64');
+      expect(result).toEqual(alice);
+    });
+
+    it('propagates error when user not found by keycloak ID', async () => {
+      getJsonMock.mockRejectedValue(new Error('Request failed (404).'));
+      await expect(getUserByKeycloakId('nonexistent-uuid')).rejects.toThrow('404');
+    });
+  });
+
   // ── createUser ──────────────────────────────────────────────────────────────
   describe('createUser', () => {
     it('calls POST /api/v1/users with body', async () => {
       postJsonMock.mockResolvedValue({ ...alice, id: 10 });
-      const body = { username: 'alice', email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith', active: true };
+      const body = { email: 'alice@example.com', displayName: 'Alice Smith' };
       const result = await createUser(body);
       expect(postJsonMock).toHaveBeenCalledWith('/api/v1/users', body);
       expect(result.id).toBe(10);
     });
 
     it('propagates 409 conflict', async () => {
-      postJsonMock.mockRejectedValue(new Error('Username already exists.'));
-      await expect(createUser({ username: 'alice', email: 'x@x.com', firstName: 'A', lastName: 'B', active: true }))
+      postJsonMock.mockRejectedValue(new Error('Email already exists.'));
+      await expect(createUser({ email: 'duplicate@example.com', displayName: 'Test' }))
         .rejects.toThrow('already exists');
     });
   });
@@ -91,11 +115,11 @@ describe('api/users', () => {
   // ── updateUser ──────────────────────────────────────────────────────────────
   describe('updateUser', () => {
     it('calls PUT /api/v1/users/{id} with body', async () => {
-      putJsonMock.mockResolvedValue({ ...alice, firstName: 'Alicia' });
-      const body = { username: 'alice', email: 'alice@example.com', firstName: 'Alicia', lastName: 'Smith', active: true };
+      putJsonMock.mockResolvedValue({ ...alice, displayName: 'Alicia Smith' });
+      const body = { email: 'alice@example.com', displayName: 'Alicia Smith' };
       const result = await updateUser(1, body);
       expect(putJsonMock).toHaveBeenCalledWith('/api/v1/users/1', body);
-      expect(result.firstName).toBe('Alicia');
+      expect(result.displayName).toBe('Alicia Smith');
     });
   });
 

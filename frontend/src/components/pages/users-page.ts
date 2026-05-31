@@ -8,7 +8,8 @@ import '../shared/modal-dialog';
 import { USERS_PAGE_STYLES } from './users-page.styles';
 
 interface FormValues {
-  username: string; email: string; firstName: string; lastName: string; active: boolean;
+  email: string;
+  displayName: string;
 }
 
 type ModalState =
@@ -23,7 +24,7 @@ class UsersPageElement extends HTMLElement {
   private loading = false; private listError: string | null = null;
   private expandedUserId: number | null = null; private expandedUser: UserDto | null = null;
   private modal: ModalState = { kind: 'none' };
-  private formValues: FormValues = { username: '', email: '', firstName: '', lastName: '', active: true };
+  private formValues: FormValues = { email: '', displayName: '' };
   private formError: string | null = null; private submitting = false;
   private isAdmin = false;
   private toastEl!: NotificationBarElement;
@@ -57,19 +58,14 @@ class UsersPageElement extends HTMLElement {
     const f = this.querySelector<HTMLFormElement>('#user-form');
     if (!f) return null;
     return {
-      username:  (f.querySelector<HTMLInputElement>('[name="username"]')?.value ?? '').trim(),
-      email:     (f.querySelector<HTMLInputElement>('[name="email"]')?.value ?? '').trim(),
-      firstName: (f.querySelector<HTMLInputElement>('[name="firstName"]')?.value ?? '').trim(),
-      lastName:  (f.querySelector<HTMLInputElement>('[name="lastName"]')?.value ?? '').trim(),
-      active:    f.querySelector<HTMLInputElement>('[name="active"]')?.checked ?? true,
+      email: (f.querySelector<HTMLInputElement>('[name="email"]')?.value ?? '').trim(),
+      displayName: (f.querySelector<HTMLInputElement>('[name="displayName"]')?.value ?? '').trim(),
     };
   }
 
   private validate(v: FormValues): string | null {
-    if (!v.username)  return 'Username is required.';
-    if (!v.email)     return 'Email is required.';
-    if (!v.firstName) return 'First name is required.';
-    if (!v.lastName)  return 'Last name is required.';
+    if (!v.email) return 'Email is required.';
+    if (!v.displayName) return 'Display name is required.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) return 'Enter a valid email address.';
     return null;
   }
@@ -79,7 +75,7 @@ class UsersPageElement extends HTMLElement {
     const err = this.validate(v);
     if (err) { this.formError = err; this.render(); return; }
     this.formValues = v; this.submitting = true; this.formError = null; this.render();
-    const body: CreateUserDto = { username: v.username, email: v.email, firstName: v.firstName, lastName: v.lastName, active: v.active };
+    const body: CreateUserDto = { email: v.email, displayName: v.displayName };
     try {
       if (this.modal.kind === 'create') { await createUser(body); this.toastEl.show('User created.', 'success'); }
       else if (this.modal.kind === 'edit') { await updateUser(this.modal.user.id, body); this.toastEl.show('User updated.', 'success'); }
@@ -96,7 +92,7 @@ class UsersPageElement extends HTMLElement {
     try {
       await deleteUser(user.id);
       this.modal = { kind: 'none' }; this.expandedUserId = null; this.expandedUser = null;
-      this.toastEl.show(`User "${user.username}" deleted.`, 'success');
+      this.toastEl.show(`User "${user.displayName}" deleted.`, 'success');
       await this.loadUsers();
     } catch (e) {
       this.modal = { kind: 'none' };
@@ -133,30 +129,26 @@ class UsersPageElement extends HTMLElement {
     if (!this.users.length) return '<div class="state-msg">No users found.</div>';
     const rows = this.users.flatMap(u => {
       const detail = this.expandedUserId === u.id && this.expandedUser
-        ? `<tr class="detail-row"><td colspan="6">${this.detailTpl(this.expandedUser)}</td></tr>` : '';
+        ? `<tr class="detail-row"><td colspan="5">${this.detailTpl(this.expandedUser)}</td></tr>` : '';
       return `<tr class="user-row">
         <td>${u.id}</td>
-        <td><button class="btn-ghost" data-action="toggle" data-id="${u.id}">${u.username}</button></td>
-        <td>${u.email}</td><td>${u.firstName} ${u.lastName}</td>
-        <td><span class="badge ${u.active ? 'badge-active' : 'badge-inactive'}">${u.active ? 'Active' : 'Inactive'}</span></td>
+        <td><button class="btn-ghost" data-action="toggle" data-id="${u.id}">${u.displayName}</button></td>
+        <td>${u.email}</td><td>${u.keycloakId ?? '-'}</td>
         <td><div class="actions">${this.isAdmin ? `
           <button class="btn btn-secondary" data-action="edit"   data-id="${u.id}">Edit</button>
           <button class="btn btn-danger"    data-action="delete" data-id="${u.id}">Delete</button>` : ''}</div></td>
       </tr>${detail}`;
     });
     return `<table><thead><tr>
-      <th>ID</th><th>Username</th><th>Email</th><th>Full Name</th><th>Status</th><th>Actions</th>
+      <th>ID</th><th>Display Name</th><th>Email</th><th>Keycloak ID</th><th>Actions</th>
       </tr></thead><tbody>${rows.join('')}</tbody></table>`;
   }
 
   private detailTpl(u: UserDto): string {
     const f = (label: string, val: string) => `<div><div class="dl">${label}</div><div class="dv">${val}</div></div>`;
     return `<div class="detail-grid">
-      ${f('ID', String(u.id))}${f('Username', u.username)}${f('Email', u.email)}
-      ${f('First Name', u.firstName)}${f('Last Name', u.lastName)}
-      <div><div class="dl">Status</div><div class="dv">
-        <span class="badge ${u.active ? 'badge-active' : 'badge-inactive'}">${u.active ? 'Active' : 'Inactive'}</span>
-      </div></div></div>`;
+      ${f('ID', String(u.id))}${f('Display Name', u.displayName)}${f('Email', u.email)}
+      ${f('Keycloak ID', u.keycloakId ?? '-')}</div>`;
   }
 
   private userModalTpl(): string {
@@ -167,17 +159,10 @@ class UsersPageElement extends HTMLElement {
     return `<modal-dialog id="user-modal" title="${title}" confirm-label="${lbl}" ${show ? 'open' : ''}>
       ${this.formError ? `<p class="form-error">\u26a0 ${this.formError}</p>` : ''}
       <form id="user-form" class="form-grid" autocomplete="off">
-        <div class="field"><label for="fu">Username</label>
-          <input id="fu" type="text" name="username" value="${v.username}" required></div>
         <div class="field"><label for="fe">Email</label>
           <input id="fe" type="email" name="email" value="${v.email}" required></div>
-        <div class="field"><label for="ff">First Name</label>
-          <input id="ff" type="text" name="firstName" value="${v.firstName}" required></div>
-        <div class="field"><label for="fl">Last Name</label>
-          <input id="fl" type="text" name="lastName" value="${v.lastName}" required></div>
-        <div class="cbrow">
-          <input id="fa" type="checkbox" name="active" ${v.active ? 'checked' : ''}>
-          <label for="fa">Active</label></div>
+        <div class="field"><label for="fd">Display Name</label>
+          <input id="fd" type="text" name="displayName" value="${v.displayName}" required></div>
       </form></modal-dialog>`;
   }
 
@@ -187,13 +172,13 @@ class UsersPageElement extends HTMLElement {
     const { user } = this.modal;
     return `<modal-dialog id="delete-modal" title="Confirm Delete" confirm-label="Delete" open>
       <p class="modal-help">
-        Delete user <strong>${user.username}</strong>? This action cannot be undone.</p>
+        Delete user <strong>${user.displayName}</strong>? This action cannot be undone.</p>
       </modal-dialog>`;
   }
 
   private bindEvents(): void {
     this.querySelector('[data-action="create"]')?.addEventListener('click', () => {
-      this.formValues = { username: '', email: '', firstName: '', lastName: '', active: true };
+      this.formValues = { email: '', displayName: '' };
       this.formError = null; this.modal = { kind: 'create' }; this.render();
     });
 
@@ -204,7 +189,7 @@ class UsersPageElement extends HTMLElement {
         const id = parseInt(btn.dataset['id'] ?? '0', 10);
         try {
           const user = await getUserById(id);
-          this.formValues = { username: user.username, email: user.email, firstName: user.firstName, lastName: user.lastName, active: user.active };
+          this.formValues = { email: user.email, displayName: user.displayName };
           this.formError = null; this.modal = { kind: 'edit', user }; this.render();
         } catch { this.toastEl.show('Failed to load user.', 'error'); }
       }));

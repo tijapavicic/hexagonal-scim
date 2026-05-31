@@ -13,7 +13,9 @@ export interface AuthErrorDetails {
 }
 
 export interface AuthProfile {
+  keycloakId: string | null;  // Keycloak user UUID from 'sub' claim
   preferredUsername: string;
+  email: string | null;  // User email from JWT
   realmRoles: string[];
   tokenExpiresAt: string | null;
 }
@@ -222,17 +224,33 @@ export function disposeAuthRefresh(): void {
 export function getAuthProfile(): AuthProfile {
   const parsed = keycloak.tokenParsed as
     | {
+        sub?: string;  // Keycloak user UUID
         preferred_username?: string;
+        email?: string;
         realm_access?: { roles?: string[] };
         exp?: number;
       }
     | undefined;
 
   return {
+    keycloakId: parsed?.sub ?? null,
     preferredUsername: parsed?.preferred_username ?? 'authenticated user',
+    email: parsed?.email ?? null,
     realmRoles: parsed?.realm_access?.roles ?? keycloak.realmAccess?.roles ?? [],
     tokenExpiresAt: parsed?.exp ? new Date(parsed.exp * 1000).toISOString() : null,
   };
+}
+
+/**
+ * Get the Keycloak user UUID (sub claim) from the current JWT token.
+ *
+ * Use this to lookup the user in the backend via GET /api/v1/users/by-keycloak-id/{keycloakId}
+ *
+ * @returns Keycloak user UUID, or null if not authenticated
+ */
+export function getKeycloakUserId(): string | null {
+  const parsed = keycloak.tokenParsed as { sub?: string } | undefined;
+  return parsed?.sub ?? null;
 }
 
 export function getKeycloak(): Keycloak {

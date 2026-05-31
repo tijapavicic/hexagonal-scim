@@ -97,6 +97,7 @@ Run Frontend Dev Server:
 # Terminal 2: Start Vite dev server with hot reload
 cd frontend
 npm install
+# npm audit fix --force
 npm run dev
 
 # expected output

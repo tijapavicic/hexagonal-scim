@@ -13,6 +13,7 @@ import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
 import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
+import com.example.user.port.in.GetUserByKeycloakIdPort;
 import com.example.user.port.in.GetUserPort;
 import com.example.user.port.in.PatchUserPort;
 import com.example.user.port.in.UpdateUserPort;
@@ -66,6 +67,7 @@ public class UserControllerAdapter {
 
     private final CreateUserPort createUserPort;
     private final GetUserPort getUserPort;
+    private final GetUserByKeycloakIdPort getUserByKeycloakIdPort;
     private final GetAllUsersPort getAllUsersPort;
     private final UpdateUserPort updateUserPort;
     private final PatchUserPort patchUserPort;
@@ -76,6 +78,7 @@ public class UserControllerAdapter {
     public UserControllerAdapter(
             CreateUserPort createUserPort,
             GetUserPort getUserPort,
+            GetUserByKeycloakIdPort getUserByKeycloakIdPort,
             GetAllUsersPort getAllUsersPort,
             UpdateUserPort updateUserPort,
             PatchUserPort patchUserPort,
@@ -85,6 +88,7 @@ public class UserControllerAdapter {
     ) {
         this.createUserPort = createUserPort;
         this.getUserPort = getUserPort;
+        this.getUserByKeycloakIdPort = getUserByKeycloakIdPort;
         this.getAllUsersPort = getAllUsersPort;
         this.updateUserPort = updateUserPort;
         this.patchUserPort = patchUserPort;
@@ -227,6 +231,33 @@ public class UserControllerAdapter {
         logger.info("Fetching user: id={}", id);
         User user = getUserPort.getById(id);
         logger.info("User fetched successfully: id={}, email={}", user.id(), user.email());
+        return new UserResponse(user.id(), user.email(), user.displayName());
+    }
+
+    @Operation(
+            summary = "Get user by Keycloak ID",
+            description = """
+                    Returns a single user by their Keycloak UUID (external OAuth2 identity).
+                    
+                    Use this endpoint when you have the Keycloak user ID from the OAuth2 JWT token
+                    and need to map it to the internal user record.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "404", description = "User not found for this Keycloak ID",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/by-keycloak-id/{keycloakId}")
+    public UserResponse getByKeycloakId(
+            @Parameter(description = "Keycloak user UUID", example = "a59ba86d-5c3c-42f3-b15c-a54e623fbb64", required = true)
+            @PathVariable("keycloakId") String keycloakId) {
+        logger.info("Fetching user: keycloakId={}", keycloakId);
+        User user = getUserByKeycloakIdPort.getByKeycloakId(keycloakId);
+        logger.info("User fetched successfully: id={}, keycloakId={}, email={}", user.id(), user.keycloakId(), user.email());
         return new UserResponse(user.id(), user.email(), user.displayName());
     }
 

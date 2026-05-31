@@ -10,6 +10,7 @@ import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
 import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
+import com.example.user.port.in.GetUserByKeycloakIdPort;
 import com.example.user.port.in.GetUserPort;
 import com.example.user.port.in.PatchUserPort;
 import com.example.user.port.in.UpdateUserPort;
@@ -30,6 +31,7 @@ class UserControllerAdapterTest {
 
     @Mock private CreateUserPort createUserPort;
     @Mock private GetUserPort getUserPort;
+    @Mock private GetUserByKeycloakIdPort getUserByKeycloakIdPort;
     @Mock private GetAllUsersPort getAllUsersPort;
     @Mock private UpdateUserPort updateUserPort;
     @Mock private PatchUserPort patchUserPort;
@@ -48,6 +50,7 @@ class UserControllerAdapterTest {
         controller = new UserControllerAdapter(
                 createUserPort,
                 getUserPort,
+                getUserByKeycloakIdPort,
                 getAllUsersPort,
                 updateUserPort,
                 patchUserPort,

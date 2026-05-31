@@ -155,6 +155,16 @@ class AccountServiceTest {
         }
 
         @Override
+        public Optional<User> findByKeycloakId(String keycloakId) {
+            if (keycloakId == null) {
+                return Optional.empty();
+            }
+            return store.values().stream()
+                    .filter(u -> keycloakId.equals(u.keycloakId()))
+                    .findFirst();
+        }
+
+        @Override
         public Optional<User> findBySellerDisplayName(String sellerDisplayName) {
             return store.values().stream()
                     .filter(u -> u.sellerDisplayName() != null)

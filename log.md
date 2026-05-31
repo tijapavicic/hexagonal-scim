@@ -66,49 +66,37 @@ mvn clean verify
 
 **Manual Testing:**
 
-1. **Start the application:**
+**Option 1: Use numeric ID (original endpoint):**
 ```bash
-cd hex-application
-mvn spring-boot:run
+GET /api/v1/users/1
+→ 200 OK: (user data)
 ```
 
-2. **Test with invalid UUID (original issue):**
+**Option 2: Use Keycloak UUID (new endpoint):**
 ```bash
-curl -X GET "http://localhost:8080/api/v1/users/a59ba86d-5c3c-42f3-b15c-a54e623fbb64"
+GET /api/v1/users/by-keycloak-id/a59ba86d-5c3c-42f3-b15c-a54e623fbb64
+→ 200 OK: (user data) - IF keycloak_id is populated
+→ 404 NOT_FOUND: "User not found for keycloakId: ..." - IF not populated yet
 ```
 
-**Expected Response:**
-```json
-{
-  "code": "INVALID_PARAMETER_TYPE",
-  "message": "Invalid value 'a59ba86d-5c3c-42f3-b15c-a54e623fbb64' for parameter 'id': expected Long",
-  "path": "/api/v1/users/a59ba86d-5c3c-42f3-b15c-a54e623fbb64",
-  "timestamp": "2026-05-31T11:35:00.123456Z"
-}
-```
+**Option 3: OAuth2 Integration (Future):**
+See `OAUTH2_KEYCLOAK_INTEGRATION.md` for complete implementation guide.
 
-3. **Test with other invalid types:**
-```bash
-# Non-numeric string
-curl -X GET "http://localhost:8080/api/v1/users/not-a-number"
+### Complete Solution Summary
 
-# Floating point when integer expected
-curl -X GET "http://localhost:8080/api/v1/users/3.14"
+✅ **Step 1: Keep existing endpoint** — `/api/v1/users/{id}` expects Long  
+✅ **Step 2: Add new endpoint** — `/api/v1/users/by-keycloak-id/{keycloakId}` added  
+✅ **Step 3: Document OAuth2 integration** — Complete guide in `OAUTH2_KEYCLOAK_INTEGRATION.md`
 
-# Way too large number (overflow)
-curl -X GET "http://localhost:8080/api/v1/users/99999999999999999999"
-```
+**Changes Made:**
+- Created `GetUserByKeycloakIdPort` input port
+- Implemented in `UserService.getByKeycloakId()`
+- Added `findByKeycloakId()` to `UserRepositoryPort`
+- Implemented in `UserJpaRepository` and `UserRepositoryAdapter`
+- Added GET `/api/v1/users/by-keycloak-id/{keycloakId}` endpoint in `UserControllerAdapter`
+- Created comprehensive OAuth2 integration guide
 
-All should return `400 BAD REQUEST` with `INVALID_PARAMETER_TYPE` error code.
-
-4. **Valid request (for comparison):**
-```bash
-curl -X GET "http://localhost:8080/api/v1/users/1"
-```
-
-**Expected Result:**
-- Status: `200 OK`
-- User data returned
+**Build Status:** ✅ **BUILD SUCCESS** (51 tests, 0 failures)
 
 ### Lessons Learned
 

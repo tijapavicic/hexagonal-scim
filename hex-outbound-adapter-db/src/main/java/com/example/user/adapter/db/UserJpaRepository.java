@@ -11,5 +11,7 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByEmailIgnoreCase(String email);
 
+    Optional<UserEntity> findByKeycloakId(String keycloakId);
+
     Page<UserEntity> findAll(Pageable pageable);
 }

@@ -38,6 +38,12 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public Optional<User> findByKeycloakId(String keycloakId) {
+        return userJpaRepository.findByKeycloakId(keycloakId)
+                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()));
+    }
+
+    @Override
     public boolean existsByEmail(String email) {
         return userJpaRepository.existsByEmailIgnoreCase(email);
     }

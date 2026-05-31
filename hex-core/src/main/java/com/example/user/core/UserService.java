@@ -5,6 +5,7 @@ import com.example.user.model.User;
 import com.example.user.port.in.CreateUserPort;
 import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
+import com.example.user.port.in.GetUserByKeycloakIdPort;
 import com.example.user.port.in.GetUserPort;
 import com.example.user.port.in.PatchUserPort;
 import com.example.user.port.in.UpdateUserPort;
@@ -14,7 +15,7 @@ import java.util.List;
 
 public class UserService
         implements CreateUserPort, GetUserPort, GetAllUsersPort,
-                   UpdateUserPort, PatchUserPort, DeleteUserPort {
+                   UpdateUserPort, PatchUserPort, DeleteUserPort, GetUserByKeycloakIdPort {
 
     private final UserRepositoryPort userRepositoryPort;
 
@@ -34,6 +35,12 @@ public class UserService
     public User getById(Long id) {
         return userRepositoryPort.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found for id: " + id));
+    }
+
+    @Override
+    public User getByKeycloakId(String keycloakId) {
+        return userRepositoryPort.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new UserNotFoundException("User not found for keycloakId: " + keycloakId));
     }
 
     @Override

@@ -358,6 +358,16 @@ class UserServiceTest {
         }
 
         @Override
+        public Optional<User> findByKeycloakId(String keycloakId) {
+            if (keycloakId == null) {
+                return Optional.empty();
+            }
+            return store.values().stream()
+                    .filter(u -> keycloakId.equals(u.keycloakId()))
+                    .findFirst();
+        }
+
+        @Override
         public boolean existsByEmail(String email) {
             return store.values().stream().anyMatch(u -> u.email().equalsIgnoreCase(email));
         }

@@ -14,6 +14,9 @@ public interface UserRepositoryPort {
     /** Looks up a user by their exact (case-insensitive) email address. */
     Optional<User> findByEmail(String email);
 
+    /** Looks up a user by their Keycloak UUID (external identity). */
+    Optional<User> findByKeycloakId(String keycloakId);
+
     boolean existsByEmail(String email);
 
     /** Returns a window of users, sorted by id ascending. */

@@ -14,10 +14,11 @@ import {
 } from './scim-app.styles';
 import './pages/home-page';
 import './pages/users-page';
+import './pages/products-page';
 import './pages/payments-page';
 
-type Route = '#/home' | '#/users' | '#/payments' | '#/not-found';
-const VALID_ROUTES: readonly Route[] = ['#/home', '#/users', '#/payments', '#/not-found'];
+type Route = '#/home' | '#/users' | '#/products' | '#/payments' | '#/not-found';
+const VALID_ROUTES: readonly Route[] = ['#/home', '#/users', '#/products', '#/payments', '#/not-found'];
 
 function normalizeRoute(raw: string): Route {
   return (VALID_ROUTES as readonly string[]).includes(raw) ? (raw as Route) : '#/not-found';
@@ -70,6 +71,9 @@ class ScimAppElement extends HTMLElement {
     switch (route) {
       case '#/users':
         content.innerHTML = '<users-page></users-page>';
+        break;
+      case '#/products':
+        content.innerHTML = '<products-page></products-page>';
         break;
       case '#/payments':
         content.innerHTML = '<payments-page></payments-page>';
@@ -153,6 +157,7 @@ class ScimAppElement extends HTMLElement {
         <nav>
           <a href="#/home"     data-route="#/home">Home</a>
           <a href="#/users"    data-route="#/users">Users</a>
+          <a href="#/products" data-route="#/products">Products</a>
           <a href="#/payments" data-route="#/payments">Payments</a>
         </nav>
         <span class="profile-chip" id="profile-chip">${this.profileChipText(profile.preferredUsername)}</span>

@@ -45,5 +45,19 @@ tr.detail-row td{background:#f8faff;padding:14px 20px}
 .cbrow{display:flex;align-items:center;gap:8px;font-family:inherit;font-size:14px}
 .modal-help{font-family:inherit;font-size:14px;color:#374151}
 .form-error{color:#b91c1c;font-size:13px;margin-bottom:4px;font-family:inherit}
+.accounts-section{margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-header h4{font-size:15px;font-weight:700;color:#0f172a;font-family:inherit}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-xs{padding:4px 8px;font-size:11px}
+.accounts-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.accounts-table thead{background:#f3f4f6}
+.accounts-table th{padding:8px 12px;font-weight:600;font-size:11px;text-transform:uppercase;color:#6b7280}
+.accounts-table td{padding:8px 12px;border-bottom:1px solid #f3f4f6}
+.accounts-table tbody tr:hover{background:#fafafa}
+.actions-cell{text-align:right}
+.loading-state-sm{padding:16px;text-align:center;color:#9ca3af;font-size:13px}
+.state-msg-sm{padding:16px;text-align:center;color:#9ca3af;font-size:13px}
+.req{color:#dc2626}
 @media (prefers-reduced-motion: reduce){.card,.btn,.spinner{animation:none;transition:none}}
 </style>`;

@@ -2,6 +2,7 @@ import { listUsers, getUserById, createUser, updateUser, deleteUser } from '../.
 import { listAccounts, createAccount, topUpAccount, deleteAccount } from '../../api/accounts';
 import { getAuthProfile } from '../../auth/keycloak';
 import type { UserDto, CreateUserDto } from '../../types/user.dto';
+import { UserRole } from '../../types/user.dto';
 import type { AccountDto } from '../../types/account.dto';
 import type { NotificationBarElement } from '../shared/notification-bar';
 import '../shared/notification-bar';
@@ -12,6 +13,7 @@ import { USERS_PAGE_STYLES } from './users-page.styles';
 interface FormValues {
   email: string;
   displayName: string;
+  role: UserRole;
 }
 
 
@@ -32,7 +34,7 @@ class UsersPageElement extends HTMLElement {
   private accounts: AccountDto[] = [];
   private accountsLoading = false;
   private modal: ModalState = { kind: 'none' };
-  private formValues: FormValues = { email: '', displayName: '' };
+  private formValues: FormValues = { email: '', displayName: '', role: UserRole.BUYER };
   private formError: string | null = null; private submitting = false;
   private isAdmin = false;
   private toastEl!: NotificationBarElement;
@@ -68,6 +70,7 @@ class UsersPageElement extends HTMLElement {
     return {
       email: (f.querySelector<HTMLInputElement>('[name="email"]')?.value ?? '').trim(),
       displayName: (f.querySelector<HTMLInputElement>('[name="displayName"]')?.value ?? '').trim(),
+      role: (f.querySelector<HTMLSelectElement>('[name="role"]')?.value as UserRole) ?? UserRole.BUYER,
     };
   }
 
@@ -83,7 +86,7 @@ class UsersPageElement extends HTMLElement {
     const err = this.validate(v);
     if (err) { this.formError = err; this.render(); return; }
     this.formValues = v; this.submitting = true; this.formError = null; this.render();
-    const body: CreateUserDto = { email: v.email, displayName: v.displayName };
+    const body: CreateUserDto = { email: v.email, displayName: v.displayName, role: v.role };
     try {
       if (this.modal.kind === 'create') { await createUser(body); this.toastEl.show('User created.', 'success'); }
       else if (this.modal.kind === 'edit') { await updateUser(this.modal.user.id, body); this.toastEl.show('User updated.', 'success'); }
@@ -219,26 +222,36 @@ class UsersPageElement extends HTMLElement {
     if (!this.users.length) return '<div class="state-msg">No users found.</div>';
     const rows = this.users.flatMap(u => {
       const detail = this.expandedUserId === u.id && this.expandedUser
-        ? `<tr class="detail-row"><td colspan="5">${this.detailTpl(this.expandedUser)}</td></tr>` : '';
+        ? `<tr class="detail-row"><td colspan="6">${this.detailTpl(this.expandedUser)}</td></tr>` : '';
+      const roleBadge = this.getRoleBadge(u.role);
       return `<tr class="user-row">
         <td>${u.id}</td>
         <td><button class="btn-ghost" data-action="toggle" data-id="${u.id}">${u.displayName}</button></td>
-        <td>${u.email}</td><td>${u.keycloakId ?? '-'}</td>
+        <td>${u.email}</td>
+        <td>${roleBadge}</td>
+        <td>${u.keycloakId ?? '-'}</td>
         <td><div class="actions">${this.isAdmin ? `
           <button class="btn btn-secondary" data-action="edit"   data-id="${u.id}">Edit</button>
           <button class="btn btn-danger"    data-action="delete" data-id="${u.id}">Delete</button>` : ''}</div></td>
       </tr>${detail}`;
     });
     return `<table><thead><tr>
-      <th>ID</th><th>Display Name</th><th>Email</th><th>Keycloak ID</th><th>Actions</th>
+      <th>ID</th><th>Display Name</th><th>Email</th><th>Role</th><th>Keycloak ID</th><th>Actions</th>
       </tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  private getRoleBadge(role: UserRole): string {
+    const className = role === UserRole.ADMIN ? 'badge-admin' : role === UserRole.SELLER ? 'badge-seller' : 'badge-buyer';
+    return `<span class="badge ${className}">${role}</span>`;
   }
 
   private detailTpl(u: UserDto): string {
     const f = (label: string, val: string) => `<div><div class="dl">${label}</div><div class="dv">${val}</div></div>`;
+    const roleBadge = this.getRoleBadge(u.role);
     return `
       <div class="detail-grid">
         ${f('ID', String(u.id))}${f('Display Name', u.displayName)}${f('Email', u.email)}
+        <div><div class="dl">Role</div><div class="dv">${roleBadge}</div></div>
         ${f('Keycloak ID', u.keycloakId ?? '-')}
       </div>
       <div class="accounts-section">
@@ -285,6 +298,13 @@ class UsersPageElement extends HTMLElement {
           <input id="fe" type="email" name="email" value="${v.email}" required></div>
         <div class="field"><label for="fd">Display Name</label>
           <input id="fd" type="text" name="displayName" value="${v.displayName}" required></div>
+        <div class="field"><label for="fr">Role</label>
+          <select id="fr" name="role" required>
+            <option value="${UserRole.BUYER}" ${v.role === UserRole.BUYER ? 'selected' : ''}>Buyer</option>
+            <option value="${UserRole.SELLER}" ${v.role === UserRole.SELLER ? 'selected' : ''}>Seller</option>
+            <option value="${UserRole.ADMIN}" ${v.role === UserRole.ADMIN ? 'selected' : ''}>Admin</option>
+          </select>
+        </div>
       </form></modal-dialog>`;
   }
 
@@ -340,7 +360,7 @@ class UsersPageElement extends HTMLElement {
 
   private bindEvents(): void {
     this.querySelector('[data-action="create"]')?.addEventListener('click', () => {
-      this.formValues = { email: '', displayName: '' };
+      this.formValues = { email: '', displayName: '', role: UserRole.BUYER };
       this.formError = null; this.modal = { kind: 'create' }; this.render();
     });
 
@@ -351,7 +371,7 @@ class UsersPageElement extends HTMLElement {
         const id = parseInt(btn.dataset['id'] ?? '0', 10);
         try {
           const user = await getUserById(id);
-          this.formValues = { email: user.email, displayName: user.displayName };
+          this.formValues = { email: user.email, displayName: user.displayName, role: user.role };
           this.formError = null; this.modal = { kind: 'edit', user }; this.render();
         } catch { this.toastEl.show('Failed to load user.', 'error'); }
       }));

@@ -7,6 +7,7 @@ import com.example.user.api.dto.PatchUserRequest;
 import com.example.user.api.dto.UpdateUserRequest;
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
+import com.example.user.model.UserRole;
 import com.example.user.port.in.CreateUserPort;
 import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
@@ -62,14 +63,14 @@ class UserControllerAdapterTest {
 
     @Test
     void createDelegatesToPortAndMapsResponse() {
-        when(createUserPort.create("john@example.com", "John"))
+        when(createUserPort.create("john@example.com", "John", UserRole.BUYER))
                 .thenReturn(User.createBuyer(1L, null, "john@example.com", "John"));
 
-        var response = controller.create(new CreateUserRequest("john@example.com", "John"));
+        var response = controller.create(new CreateUserRequest("john@example.com", "John", UserRole.BUYER));
 
         assertEquals(1L, response.id());
         assertEquals("john@example.com", response.email());
-        verify(createUserPort).create("john@example.com", "John");
+        verify(createUserPort).create("john@example.com", "John", UserRole.BUYER);
     }
 
     @Test
@@ -96,24 +97,24 @@ class UserControllerAdapterTest {
 
     @Test
     void updateDelegatesToPortAndMapsResponse() {
-        when(updateUserPort.update(3L, "new@example.com", "New Name"))
+        when(updateUserPort.update(3L, "new@example.com", "New Name", UserRole.BUYER))
                 .thenReturn(User.createBuyer(3L, null, "new@example.com", "New Name"));
 
-        var response = controller.update(3L, new UpdateUserRequest("new@example.com", "New Name"));
+        var response = controller.update(3L, new UpdateUserRequest("new@example.com", "New Name", UserRole.BUYER));
 
         assertEquals("new@example.com", response.email());
-        verify(updateUserPort).update(3L, "new@example.com", "New Name");
+        verify(updateUserPort).update(3L, "new@example.com", "New Name", UserRole.BUYER);
     }
 
     @Test
     void patchDelegatesToPortAndMapsResponse() {
-        when(patchUserPort.patch(4L, "patched@example.com", null))
+        when(patchUserPort.patch(4L, "patched@example.com", null, null))
                 .thenReturn(User.createBuyer(4L, null, "patched@example.com", "Display"));
 
-        var response = controller.patch(4L, new PatchUserRequest("patched@example.com", null));
+        var response = controller.patch(4L, new PatchUserRequest("patched@example.com", null, null));
 
         assertEquals("patched@example.com", response.email());
-        verify(patchUserPort).patch(4L, "patched@example.com", null);
+        verify(patchUserPort).patch(4L, "patched@example.com", null, null);
     }
 
     @Test

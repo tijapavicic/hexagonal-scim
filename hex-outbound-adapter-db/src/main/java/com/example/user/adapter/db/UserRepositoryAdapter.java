@@ -21,26 +21,30 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
 
     @Override
     public User save(User user) {
-        UserEntity saved = userJpaRepository.save(new UserEntity(user.keycloakId(), user.email(), user.displayName()));
-        return User.createBuyer(saved.getId(), saved.getKeycloakId(), saved.getEmail(), saved.getDisplayName());
+        UserEntity saved = userJpaRepository.save(new UserEntity(user.keycloakId(), user.email(), user.displayName(), user.role()));
+        return new User(saved.getId(), saved.getKeycloakId(), saved.getEmail(), saved.getDisplayName(),
+                        saved.getRole(), null, null, null, null, null, null);
     }
 
     @Override
     public Optional<User> findById(Long id) {
         return userJpaRepository.findById(id)
-                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()));
+                .map(entity -> new User(entity.getId(), entity.getKeycloakId(), entity.getEmail(),
+                                        entity.getDisplayName(), entity.getRole(), null, null, null, null, null, null));
     }
 
     @Override
     public Optional<User> findByEmail(String email) {
         return userJpaRepository.findByEmailIgnoreCase(email)
-                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()));
+                .map(entity -> new User(entity.getId(), entity.getKeycloakId(), entity.getEmail(),
+                                        entity.getDisplayName(), entity.getRole(), null, null, null, null, null, null));
     }
 
     @Override
     public Optional<User> findByKeycloakId(String keycloakId) {
         return userJpaRepository.findByKeycloakId(keycloakId)
-                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()));
+                .map(entity -> new User(entity.getId(), entity.getKeycloakId(), entity.getEmail(),
+                                        entity.getDisplayName(), entity.getRole(), null, null, null, null, null, null));
     }
 
     @Override
@@ -63,7 +67,8 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
         Page<UserEntity> page = userJpaRepository.findAll(pageable);
 
         List<User> users = page.getContent().stream()
-                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()))
+                .map(entity -> new User(entity.getId(), entity.getKeycloakId(), entity.getEmail(),
+                                        entity.getDisplayName(), entity.getRole(), null, null, null, null, null, null))
                 .toList();
 
         return new PagedUsers(users, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
@@ -72,7 +77,8 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     @Override
     public List<User> findAll() {
         return userJpaRepository.findAll(Sort.by("id").ascending()).stream()
-                .map(entity -> User.createBuyer(entity.getId(), entity.getKeycloakId(), entity.getEmail(), entity.getDisplayName()))
+                .map(entity -> new User(entity.getId(), entity.getKeycloakId(), entity.getEmail(),
+                                        entity.getDisplayName(), entity.getRole(), null, null, null, null, null, null))
                 .toList();
     }
 
@@ -96,8 +102,10 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
         entity.setKeycloakId(user.keycloakId());
         entity.setEmail(user.email());
         entity.setDisplayName(user.displayName());
+        entity.setRole(user.role());
         UserEntity saved = userJpaRepository.save(entity);
-        return User.createBuyer(saved.getId(), saved.getKeycloakId(), saved.getEmail(), saved.getDisplayName());
+        return new User(saved.getId(), saved.getKeycloakId(), saved.getEmail(),
+                        saved.getDisplayName(), saved.getRole(), null, null, null, null, null, null);
     }
 
     @Override

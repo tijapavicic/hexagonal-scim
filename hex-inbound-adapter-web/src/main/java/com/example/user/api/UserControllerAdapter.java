@@ -122,10 +122,10 @@ public class UserControllerAdapter {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
-        logger.info("Creating user: email={}", request.email());
-        User created = createUserPort.create(request.email(), request.displayName());
-        logger.info("User created successfully: id={}, email={}", created.id(), created.email());
-        return new UserResponse(created.id(), created.email(), created.displayName());
+        logger.info("Creating user: email={}, role={}", request.email(), request.role());
+        User created = createUserPort.create(request.email(), request.displayName(), request.role());
+        logger.info("User created successfully: id={}, email={}, role={}", created.id(), created.email(), created.role());
+        return new UserResponse(created.id(), created.email(), created.displayName(), created.role());
     }
 
     @Operation(
@@ -164,7 +164,7 @@ public class UserControllerAdapter {
 
         return new PagedUserResponse(
                 pagedUsers.content().stream()
-                        .map(user -> new UserResponse(user.id(), user.email(), user.displayName()))
+                        .map(user -> new UserResponse(user.id(), user.email(), user.displayName(), user.role()))
                         .toList(),
                 pagedUsers.pageNumber(),
                 pagedUsers.pageSize(),
@@ -208,7 +208,7 @@ public class UserControllerAdapter {
         logger.info("flow_stage=DOMAIN_OPERATION_COMPLETED operation=users.getAllAdmin totalUsers={} status=SUCCESS", allUsers.totalElements());
 
         java.util.List<UserResponse> result = allUsers.content().stream()
-                .map(user -> new UserResponse(user.id(), user.email(), user.displayName()))
+                .map(user -> new UserResponse(user.id(), user.email(), user.displayName(), user.role()))
                 .toList();
         logger.info("flow_stage=RESPONSE_PREPARED operation=users.getAllAdmin userCount={} status=COMPLETED", result.size());
 
@@ -230,8 +230,8 @@ public class UserControllerAdapter {
             @PathVariable("id") Long id) {
         logger.info("Fetching user: id={}", id);
         User user = getUserPort.getById(id);
-        logger.info("User fetched successfully: id={}, email={}", user.id(), user.email());
-        return new UserResponse(user.id(), user.email(), user.displayName());
+        logger.info("User fetched successfully: id={}, email={}, role={}", user.id(), user.email(), user.role());
+        return new UserResponse(user.id(), user.email(), user.displayName(), user.role());
     }
 
     @Operation(
@@ -257,8 +257,8 @@ public class UserControllerAdapter {
             @PathVariable("keycloakId") String keycloakId) {
         logger.info("Fetching user: keycloakId={}", keycloakId);
         User user = getUserByKeycloakIdPort.getByKeycloakId(keycloakId);
-        logger.info("User fetched successfully: id={}, keycloakId={}, email={}", user.id(), user.keycloakId(), user.email());
-        return new UserResponse(user.id(), user.email(), user.displayName());
+        logger.info("User fetched successfully: id={}, keycloakId={}, email={}, role={}", user.id(), user.keycloakId(), user.email(), user.role());
+        return new UserResponse(user.id(), user.email(), user.displayName(), user.role());
     }
 
     @Operation(summary = "Replace a user (full update)",
@@ -282,10 +282,10 @@ public class UserControllerAdapter {
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable("id") Long id,
             @Valid @RequestBody UpdateUserRequest request) {
-        logger.info("Updating user: id={}, email={}", id, request.email());
-        User updated = updateUserPort.update(id, request.email(), request.displayName());
-        logger.info("User updated successfully: id={}, email={}", updated.id(), updated.email());
-        return new UserResponse(updated.id(), updated.email(), updated.displayName());
+        logger.info("Updating user: id={}, email={}, role={}", id, request.email(), request.role());
+        User updated = updateUserPort.update(id, request.email(), request.displayName(), request.role());
+        logger.info("User updated successfully: id={}, email={}, role={}", updated.id(), updated.email(), updated.role());
+        return new UserResponse(updated.id(), updated.email(), updated.displayName(), updated.role());
     }
 
     @Operation(summary = "Partially update a user (PATCH)",
@@ -313,10 +313,10 @@ public class UserControllerAdapter {
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable("id") Long id,
             @Valid @RequestBody PatchUserRequest request) {
-        logger.info("Patching user: id={}, email={}, displayName={}", id, request.email(), request.displayName());
-        User patched = patchUserPort.patch(id, request.email(), request.displayName());
-        logger.info("User patched successfully: id={}, email={}", patched.id(), patched.email());
-        return new UserResponse(patched.id(), patched.email(), patched.displayName());
+        logger.info("Patching user: id={}, email={}, displayName={}, role={}", id, request.email(), request.displayName(), request.role());
+        User patched = patchUserPort.patch(id, request.email(), request.displayName(), request.role());
+        logger.info("User patched successfully: id={}, email={}, role={}", patched.id(), patched.email(), patched.role());
+        return new UserResponse(patched.id(), patched.email(), patched.displayName(), patched.role());
     }
 
     @Operation(summary = "Delete a user",

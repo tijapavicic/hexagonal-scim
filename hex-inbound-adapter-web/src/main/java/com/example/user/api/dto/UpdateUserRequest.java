@@ -1,12 +1,13 @@
 package com.example.user.api.dto;
 
+import com.example.user.model.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 /**
  * Request payload for a full user replacement (HTTP PUT).
- * Both fields are mandatory — the existing user is completely replaced.
+ * All fields are mandatory — the existing user is completely replaced.
  */
 @Schema(description = "Full user replacement payload — all fields required")
 public record UpdateUserRequest(
@@ -18,6 +19,9 @@ public record UpdateUserRequest(
 
         @Schema(description = "New display name", example = "Alice Smith")
         @NotBlank(message = "displayName is required")
-        String displayName
+        String displayName,
+
+        @Schema(description = "User role", example = "BUYER", allowableValues = {"BUYER", "SELLER", "ADMIN"})
+        UserRole role
 ) {}
 

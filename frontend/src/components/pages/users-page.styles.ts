@@ -14,6 +14,9 @@ tr.detail-row td{background:#f8faff;padding:14px 20px}
 .dl{color:var(--scim-text-muted,#6b7280);font-weight:700;text-transform:uppercase;font-size:11px}
 .dv{color:var(--scim-text,#0f172a);margin-top:2px}
 .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.badge-buyer{background:#dbeafe;color:#1e3a8a}
+.badge-seller{background:#dcfce7;color:#14532d}
+.badge-admin{background:#fef3c7;color:#92400e}
 .badge-active{background:#dcfce7;color:#14532d}
 .badge-inactive{background:#fee2e2;color:#7f1d1d}
 .actions{display:flex;gap:8px}
@@ -41,7 +44,9 @@ tr.detail-row td{background:#f8faff;padding:14px 20px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:13px;font-weight:700;color:var(--scim-text-muted,#475569);font-family:inherit}
 .field input{padding:9px 11px;border:1px solid var(--scim-border,#d1d5db);border-radius:10px;font-size:14px;font-family:inherit;width:100%;background:#fff;transition:border-color var(--scim-dur-fast,140ms) var(--scim-ease,ease-out),box-shadow var(--scim-dur-fast,140ms) var(--scim-ease,ease-out)}
+.field select{padding:9px 11px;border:1px solid var(--scim-border,#d1d5db);border-radius:10px;font-size:14px;font-family:inherit;width:100%;background:#fff;transition:border-color var(--scim-dur-fast,140ms) var(--scim-ease,ease-out),box-shadow var(--scim-dur-fast,140ms) var(--scim-ease,ease-out)}
 .field input:focus-visible{outline:none;border-color:var(--scim-primary,#2563eb);box-shadow:0 0 0 3px color-mix(in srgb,var(--scim-primary,#2563eb) 22%, transparent)}
+.field select:focus-visible{outline:none;border-color:var(--scim-primary,#2563eb);box-shadow:0 0 0 3px color-mix(in srgb,var(--scim-primary,#2563eb) 22%, transparent)}
 .cbrow{display:flex;align-items:center;gap:8px;font-family:inherit;font-size:14px}
 .modal-help{font-family:inherit;font-size:14px;color:#374151}
 .form-error{color:#b91c1c;font-size:13px;margin-bottom:4px;font-family:inherit}

@@ -1,7 +1,10 @@
 package com.example.user.adapter.db;
 
+import com.example.user.model.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,6 +26,10 @@ public class UserEntity {
     @Column(nullable = false)
     private String displayName;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.BUYER;  // Default to BUYER
+
     protected UserEntity() {
     }
 
@@ -30,6 +37,14 @@ public class UserEntity {
         this.keycloakId = keycloakId;
         this.email = email;
         this.displayName = displayName;
+        this.role = UserRole.BUYER;  // Default role
+    }
+
+    public UserEntity(String keycloakId, String email, String displayName, UserRole role) {
+        this.keycloakId = keycloakId;
+        this.email = email;
+        this.displayName = displayName;
+        this.role = role != null ? role : UserRole.BUYER;
     }
 
     public Long getId() {
@@ -58,6 +73,14 @@ public class UserEntity {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
     }
 }
 

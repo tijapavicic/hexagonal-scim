@@ -5,20 +5,21 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * Core domain model representing a user and seller in the marketplace.
+ * Core domain model representing a user in the marketplace.
  *
- * A User can be:
- * - A buyer only (isSeller = false, seller fields null)
- * - A seller (isSeller = true, seller fields populated)
- * - Both buyer and seller simultaneously
+ * A User has one of three roles:
+ * - BUYER (default): Can browse and purchase products
+ * - SELLER: Can sell products + all buyer capabilities (requires seller profile)
+ * - ADMIN: Platform administrator + all seller/buyer capabilities
  *
  * <p>Invariants enforced by the compact constructor:
  * <ul>
  *   <li>{@code email} must be non-null and non-blank</li>
  *   <li>{@code displayName} must be non-null and non-blank (user's account display name)</li>
+ *   <li>{@code role} must be non-null (defaults to BUYER)</li>
  *   <li>{@code id} may be {@code null} for users that have not been persisted yet</li>
- *   <li>If {@code isSeller} is true, seller fields must be present</li>
- *   <li>If {@code isSeller} is false, seller fields must be null</li>
+ *   <li>If {@code role} is SELLER or ADMIN, seller fields should be present</li>
+ *   <li>If {@code role} is BUYER, seller fields must be null</li>
  * </ul>
  *
  * <p>Violation of any invariant throws {@link NullPointerException} (for {@code null})
@@ -26,10 +27,10 @@ import java.util.Objects;
  * always in a valid state regardless of which adapter constructs it.
  *
  * SOLID Principles:
- * - SRP: User handles both buyer and seller personas in one model
- * - OCP: Seller fields are optional, new seller features don't break existing code
- * - LSP: User is substitutable in both buyer and seller contexts
- * - ISP: Methods are focused (isSeller(), enableSeller(), etc)
+ * - SRP: User handles identity and role-based capabilities
+ * - OCP: New roles can be added without breaking existing code
+ * - LSP: User is substitutable in any role context
+ * - ISP: Methods are focused (role checks, profile updates, etc)
  * - DIP: No Spring/infrastructure dependencies
  */
 public record User(
@@ -37,7 +38,7 @@ public record User(
     String keycloakId,            // Keycloak user UUID (external identity)
     String email,                 // User email (unique)
     String displayName,           // User's account display name
-    Boolean isSeller,             // Whether user is registered as seller
+    UserRole role,                // User role (BUYER, SELLER, ADMIN)
     String sellerDisplayName,     // Seller's shop name (unique if not null)
     String sellerBio,             // Seller's shop bio/description
     BigDecimal sellerRating,      // Average seller rating (0-5 stars)
@@ -54,17 +55,18 @@ public record User(
         if (email.isBlank())       throw new IllegalArgumentException("email must not be blank");
         if (displayName.isBlank()) throw new IllegalArgumentException("displayName must not be blank");
 
-        // Seller invariants
-        if (isSeller == null) {
-            isSeller = false;
+        // Role defaults to BUYER if null
+        if (role == null) {
+            role = UserRole.BUYER;
         }
 
-        if (isSeller) {
-            // If seller, seller fields must be populated
-            Objects.requireNonNull(sellerDisplayName, "sellerDisplayName required for sellers");
-            if (sellerDisplayName.isBlank()) {
+        // Seller/Admin invariants
+        if (role.canSell()) {
+            // If seller or admin, seller fields should be populated
+            if (sellerDisplayName != null && sellerDisplayName.isBlank()) {
                 throw new IllegalArgumentException("sellerDisplayName must not be blank");
             }
+            // Initialize defaults for new sellers
             if (sellerRating == null) {
                 sellerRating = BigDecimal.ZERO;
             }
@@ -72,11 +74,11 @@ public record User(
                 sellerReviewCount = 0;
             }
         } else {
-            // If not seller, seller fields must be null
+            // If buyer, seller fields must be null
             if (sellerDisplayName != null || sellerBio != null ||
                 sellerRating != null || sellerReviewCount != null ||
                 sellerVerifiedAt != null || sellerJoinedAt != null) {
-                throw new IllegalArgumentException("non-sellers must have null seller fields");
+                throw new IllegalArgumentException("buyers must have null seller fields");
             }
         }
     }
@@ -88,14 +90,14 @@ public record User(
      * @param keycloakId Keycloak user UUID (can be null)
      * @param email user email
      * @param displayName display name
-     * @return new User in buyer mode (not a seller)
+     * @return new User with BUYER role
      */
     public static User createBuyer(Long id, String keycloakId, String email, String displayName) {
-        return new User(id, keycloakId, email, displayName, false, null, null, null, null, null, null);
+        return new User(id, keycloakId, email, displayName, UserRole.BUYER, null, null, null, null, null, null);
     }
 
     /**
-     * Factory to create a user and immediately register as seller.
+     * Factory to create a user with SELLER role.
      *
      * @param id user ID
      * @param keycloakId Keycloak user UUID (can be null)
@@ -103,7 +105,7 @@ public record User(
      * @param displayName user's account display name
      * @param sellerDisplayName seller's shop name
      * @param sellerBio seller's shop bio
-     * @return new User in both buyer and seller mode
+     * @return new User with SELLER role
      */
     public static User createSeller(
         Long id, String keycloakId, String email, String displayName,
@@ -112,7 +114,7 @@ public record User(
         LocalDateTime now = LocalDateTime.now();
         return new User(
             id, keycloakId, email, displayName,
-            true,                    // isSeller = true
+            UserRole.SELLER,         // Role = SELLER
             sellerDisplayName,
             sellerBio,
             BigDecimal.ZERO,        // Initial rating 0
@@ -123,18 +125,31 @@ public record User(
     }
 
     /**
-     * Enable seller capabilities on this user.
+     * Factory to create an admin user.
      *
-     * Transitions user from buyer-only to seller+buyer.
+     * @param id user ID
+     * @param keycloakId Keycloak user UUID (can be null)
+     * @param email user email
+     * @param displayName user's account display name
+     * @return new User with ADMIN role
+     */
+    public static User createAdmin(Long id, String keycloakId, String email, String displayName) {
+        return new User(id, keycloakId, email, displayName, UserRole.ADMIN, null, null, null, null, null, null);
+    }
+
+    /**
+     * Promote user to SELLER role.
+     *
+     * Transitions user from BUYER to SELLER.
      *
      * @param sellerDisplayName seller's shop name
      * @param sellerBio seller's shop bio
-     * @return new User with seller capabilities enabled
-     * @throws IllegalStateException if user is already a seller
+     * @return new User with SELLER role
+     * @throws IllegalStateException if user is already a seller or admin
      */
     public User enableSeller(String sellerDisplayName, String sellerBio) {
-        if (this.isSeller) {
-            throw new IllegalStateException("User is already a seller");
+        if (this.role.canSell()) {
+            throw new IllegalStateException("User is already a seller or admin");
         }
 
         if (sellerDisplayName == null || sellerDisplayName.trim().isEmpty()) {
@@ -148,7 +163,7 @@ public record User(
             this.keycloakId,
             this.email,
             this.displayName,
-            true,                    // Enable seller
+            UserRole.SELLER,         // Promote to SELLER
             sellerDisplayName,
             sellerBio,
             BigDecimal.ZERO,        // Initial rating
@@ -159,18 +174,65 @@ public record User(
     }
 
     /**
+     * Update user role.
+     *
+     * Admin operation to change user role.
+     *
+     * @param newRole new role to assign
+     * @return new User with updated role
+     * @throws IllegalArgumentException if newRole is null
+     */
+    public User updateRole(UserRole newRole) {
+        if (newRole == null) {
+            throw new IllegalArgumentException("role required");
+        }
+
+        // When downgrading from seller/admin to buyer, clear seller fields
+        if (!newRole.canSell() && this.role.canSell()) {
+            return new User(
+                this.id,
+                this.keycloakId,
+                this.email,
+                this.displayName,
+                newRole,
+                null,  // Clear seller fields
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+        }
+
+        // Otherwise just update role, keep existing data
+        return new User(
+            this.id,
+            this.keycloakId,
+            this.email,
+            this.displayName,
+            newRole,
+            this.sellerDisplayName,
+            this.sellerBio,
+            this.sellerRating,
+            this.sellerReviewCount,
+            this.sellerVerifiedAt,
+            this.sellerJoinedAt
+        );
+    }
+
+    /**
      * Update seller profile information.
      *
-     * Only updates seller fields if user is a seller.
+     * Only updates seller fields if user has seller or admin role.
      *
      * @param newSellerDisplayName new seller display name
      * @param newSellerBio new seller bio
      * @return new User with updated seller info
-     * @throws IllegalStateException if user is not a seller
+     * @throws IllegalStateException if user cannot sell
      */
     public User updateSellerProfile(String newSellerDisplayName, String newSellerBio) {
-        if (!this.isSeller) {
-            throw new IllegalStateException("User is not a seller");
+        if (!this.role.canSell()) {
+            throw new IllegalStateException("User does not have seller capabilities");
         }
 
         if (newSellerDisplayName != null && newSellerDisplayName.trim().isEmpty()) {
@@ -185,7 +247,7 @@ public record User(
             this.keycloakId,
             this.email,
             this.displayName,
-            true,
+            this.role,
             displayName,
             bio,
             this.sellerRating,
@@ -201,11 +263,11 @@ public record User(
      * Once verified, seller can be displayed publicly.
      *
      * @return new User with seller verified
-     * @throws IllegalStateException if user is not a seller
+     * @throws IllegalStateException if user cannot sell
      */
     public User verifySeller() {
-        if (!this.isSeller) {
-            throw new IllegalStateException("User is not a seller");
+        if (!this.role.canSell()) {
+            throw new IllegalStateException("User does not have seller capabilities");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -215,7 +277,7 @@ public record User(
             this.keycloakId,
             this.email,
             this.displayName,
-            true,
+            this.role,
             this.sellerDisplayName,
             this.sellerBio,
             this.sellerRating,
@@ -231,12 +293,12 @@ public record User(
      * @param newRating new average rating (0-5)
      * @param newReviewCount new total review count
      * @return new User with updated rating
-     * @throws IllegalStateException if user is not a seller
+     * @throws IllegalStateException if user cannot sell
      * @throws IllegalArgumentException if rating out of bounds
      */
     public User updateSellerRating(BigDecimal newRating, Integer newReviewCount) {
-        if (!this.isSeller) {
-            throw new IllegalStateException("User is not a seller");
+        if (!this.role.canSell()) {
+            throw new IllegalStateException("User does not have seller capabilities");
         }
 
         if (newRating == null) {
@@ -256,7 +318,7 @@ public record User(
             this.keycloakId,
             this.email,
             this.displayName,
-            true,
+            this.role,
             this.sellerDisplayName,
             this.sellerBio,
             newRating,
@@ -267,12 +329,21 @@ public record User(
     }
 
     /**
-     * Convenience helper for boolean seller checks.
+     * Convenience helper for role-based seller checks.
      *
-     * @return true when seller capability is enabled
+     * @return true when user has SELLER or ADMIN role
      */
-    public boolean sellerEnabled() {
-        return Boolean.TRUE.equals(this.isSeller);
+    public boolean canSell() {
+        return this.role != null && this.role.canSell();
+    }
+
+    /**
+     * Check if user is admin.
+     *
+     * @return true when user has ADMIN role
+     */
+    public boolean isAdmin() {
+        return this.role != null && this.role.isAdmin();
     }
 
     /**
@@ -283,6 +354,6 @@ public record User(
      * @return true if seller is verified
      */
     public boolean isSellerVerified() {
-        return sellerEnabled() && this.sellerVerifiedAt != null;
+        return canSell() && this.sellerVerifiedAt != null;
     }
 }

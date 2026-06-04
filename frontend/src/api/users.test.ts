@@ -21,18 +21,21 @@ vi.mock('./http', () => ({
 
 import { listUsers, getUserById, getUserByKeycloakId, createUser, updateUser, deleteUser } from './users';
 import type { UserDto } from '../types/user.dto';
+import { UserRole } from '../types/user.dto';
 
 // ── Fixture ───────────────────────────────────────────────────────────────────
 const alice: UserDto = {
   id: 1,
   email: 'alice@example.com',
   displayName: 'Alice Smith',
+  role: UserRole.BUYER,
   keycloakId: 'a59ba86d-5c3c-42f3-b15c-a54e623fbb64'
 };
 const bob: UserDto = {
   id: 2,
   email: 'bob@example.com',
-  displayName: 'Bob Jones'
+  displayName: 'Bob Jones',
+  role: UserRole.SELLER
 };
 
 describe('api/users', () => {

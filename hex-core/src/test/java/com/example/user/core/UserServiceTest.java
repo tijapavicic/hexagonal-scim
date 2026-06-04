@@ -2,6 +2,7 @@ package com.example.user.core;
 
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
+import com.example.user.model.UserRole;
 import com.example.user.port.out.UserRepositoryPort;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,7 @@ class UserServiceTest {
     void createStoresUser() {
         UserService service = new UserService(new InMemoryRepo());
 
-        User created = service.create("john@example.com", "John");
+        User created = service.create("john@example.com", "John", UserRole.BUYER);
 
         assertEquals(1L, created.id());
         assertEquals("john@example.com", created.email());
@@ -34,19 +35,19 @@ class UserServiceTest {
     @Test
     void createRejectsDuplicateEmail() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("john@example.com", "John");
+        service.create("john@example.com", "John", UserRole.BUYER);
 
-        assertThrows(DuplicateUserException.class, () -> service.create("john@example.com", "John Again"));
+        assertThrows(DuplicateUserException.class, () -> service.create("john@example.com", "John Again", UserRole.BUYER));
     }
 
     @Test
     void createRejectsDuplicateEmailCaseInsensitive() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("john@example.com", "John");
+        service.create("john@example.com", "John", UserRole.BUYER);
 
         // Same email, different case — must still be rejected
         assertThrows(DuplicateUserException.class,
-                () -> service.create("JOHN@EXAMPLE.COM", "John Upper"));
+                () -> service.create("JOHN@EXAMPLE.COM", "John Upper", UserRole.BUYER));
     }
 
     @Test
@@ -54,28 +55,28 @@ class UserServiceTest {
         UserService service = new UserService(new InMemoryRepo());
 
         // Domain invariant: User compact constructor rejects null email
-        assertThrows(NullPointerException.class, () -> service.create(null, "Alice"));
+        assertThrows(NullPointerException.class, () -> service.create(null, "Alice", UserRole.BUYER));
     }
 
     @Test
     void createWithBlankEmailThrowsIllegalArgumentException() {
         UserService service = new UserService(new InMemoryRepo());
 
-        assertThrows(IllegalArgumentException.class, () -> service.create("  ", "Alice"));
+        assertThrows(IllegalArgumentException.class, () -> service.create("  ", "Alice", UserRole.BUYER));
     }
 
     @Test
     void createWithNullDisplayNameThrowsNullPointerException() {
         UserService service = new UserService(new InMemoryRepo());
 
-        assertThrows(NullPointerException.class, () -> service.create("alice@example.com", null));
+        assertThrows(NullPointerException.class, () -> service.create("alice@example.com", null, UserRole.BUYER));
     }
 
     @Test
     void createWithBlankDisplayNameThrowsIllegalArgumentException() {
         UserService service = new UserService(new InMemoryRepo());
 
-        assertThrows(IllegalArgumentException.class, () -> service.create("alice@example.com", ""));
+        assertThrows(IllegalArgumentException.class, () -> service.create("alice@example.com", "", UserRole.BUYER));
     }
 
     // ─── getById ──────────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ class UserServiceTest {
     @Test
     void getByIdReturnsStoredUser() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("jane@example.com", "Jane");
+        User created = service.create("jane@example.com", "Jane", UserRole.BUYER);
 
         User found = service.getById(created.id());
 
@@ -114,9 +115,9 @@ class UserServiceTest {
     @Test
     void getAllPageableReturnsSinglePage() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("a@example.com", "A");
-        service.create("b@example.com", "B");
-        service.create("c@example.com", "C");
+        service.create("a@example.com", "A", UserRole.BUYER);
+        service.create("b@example.com", "B", UserRole.BUYER);
+        service.create("c@example.com", "C", UserRole.BUYER);
 
         PagedUsers result = service.getAll(0, 2, true);
 
@@ -130,9 +131,9 @@ class UserServiceTest {
     @Test
     void getAllSecondPageReturnsRemainingUsers() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("a@example.com", "A");
-        service.create("b@example.com", "B");
-        service.create("c@example.com", "C");
+        service.create("a@example.com", "A", UserRole.BUYER);
+        service.create("b@example.com", "B", UserRole.BUYER);
+        service.create("c@example.com", "C", UserRole.BUYER);
 
         PagedUsers result = service.getAll(1, 2, true);
 
@@ -144,9 +145,9 @@ class UserServiceTest {
     @Test
     void getAllNotPageableReturnsAllUsers() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("a@example.com", "A");
-        service.create("b@example.com", "B");
-        service.create("c@example.com", "C");
+        service.create("a@example.com", "A", UserRole.BUYER);
+        service.create("b@example.com", "B", UserRole.BUYER);
+        service.create("c@example.com", "C", UserRole.BUYER);
 
         PagedUsers result = service.getAll(0, 2, false);
 
@@ -159,7 +160,7 @@ class UserServiceTest {
     void getAllDefaultReturnsTenUsers() {
         UserService service = new UserService(new InMemoryRepo());
         for (int i = 1; i <= 15; i++) {
-            service.create("user" + i + "@example.com", "User " + i);
+            service.create("user" + i + "@example.com", "User " + i, UserRole.BUYER);
         }
 
         PagedUsers result = service.getAll(0, 10, true);
@@ -174,9 +175,9 @@ class UserServiceTest {
     @Test
     void updateReplacesAllFields() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("old@example.com", "Old");
+        User created = service.create("old@example.com", "Old", UserRole.BUYER);
 
-        User updated = service.update(created.id(), "new@example.com", "New");
+        User updated = service.update(created.id(), "new@example.com", "New", UserRole.SELLER);
 
         assertEquals("new@example.com", updated.email());
         assertEquals("New", updated.displayName());
@@ -187,25 +188,25 @@ class UserServiceTest {
     void updateThrowsWhenUserNotFound() {
         UserService service = new UserService(new InMemoryRepo());
 
-        assertThrows(UserNotFoundException.class, () -> service.update(999L, "x@x.com", "X"));
+        assertThrows(UserNotFoundException.class, () -> service.update(999L, "x@x.com", "X", UserRole.BUYER));
     }
 
     @Test
     void updateThrowsOnDuplicateEmail() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("alice@example.com", "Alice");
-        User bob = service.create("bob@example.com", "Bob");
+        service.create("alice@example.com", "Alice", UserRole.BUYER);
+        User bob = service.create("bob@example.com", "Bob", UserRole.BUYER);
 
         assertThrows(DuplicateUserException.class,
-                () -> service.update(bob.id(), "alice@example.com", "Bob"));
+                () -> service.update(bob.id(), "alice@example.com", "Bob", UserRole.BUYER));
     }
 
     @Test
     void updateAllowsSameEmailOnSameUser() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
-        User updated = service.update(created.id(), "alice@example.com", "Alice Renamed");
+        User updated = service.update(created.id(), "alice@example.com", "Alice Renamed", UserRole.BUYER);
 
         assertEquals("Alice Renamed", updated.displayName());
     }
@@ -213,11 +214,11 @@ class UserServiceTest {
     @Test
     void updateAllowsSameEmailWithDifferentCase() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
         // Updating to ALICE@EXAMPLE.COM should succeed — same person, different case
         User updated = assertDoesNotThrow(
-                () -> service.update(created.id(), "ALICE@EXAMPLE.COM", "Alice Renamed"));
+                () -> service.update(created.id(), "ALICE@EXAMPLE.COM", "Alice Renamed", UserRole.BUYER));
 
         assertEquals("ALICE@EXAMPLE.COM", updated.email());
         assertEquals("Alice Renamed", updated.displayName());
@@ -226,12 +227,12 @@ class UserServiceTest {
     @Test
     void updateThrowsOnDuplicateEmailCaseInsensitive() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("alice@example.com", "Alice");
-        User bob = service.create("bob@example.com", "Bob");
+        service.create("alice@example.com", "Alice", UserRole.BUYER);
+        User bob = service.create("bob@example.com", "Bob", UserRole.BUYER);
 
         // ALICE@EXAMPLE.COM is already taken by alice — must reject for bob
         assertThrows(DuplicateUserException.class,
-                () -> service.update(bob.id(), "ALICE@EXAMPLE.COM", "Evil Bob"));
+                () -> service.update(bob.id(), "ALICE@EXAMPLE.COM", "Evil Bob", UserRole.BUYER));
     }
 
     // ─── patch ────────────────────────────────────────────────────────────────
@@ -239,9 +240,9 @@ class UserServiceTest {
     @Test
     void patchUpdatesOnlyProvidedFields() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
-        User patched = service.patch(created.id(), null, "Alice Updated");
+        User patched = service.patch(created.id(), null, "Alice Updated", null);
 
         assertEquals("alice@example.com", patched.email());   // unchanged
         assertEquals("Alice Updated", patched.displayName()); // changed
@@ -250,9 +251,9 @@ class UserServiceTest {
     @Test
     void patchUpdatesEmailOnly() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
-        User patched = service.patch(created.id(), "alice2@example.com", null);
+        User patched = service.patch(created.id(), "alice2@example.com", null, null);
 
         assertEquals("alice2@example.com", patched.email());
         assertEquals("Alice", patched.displayName()); // unchanged
@@ -261,9 +262,9 @@ class UserServiceTest {
     @Test
     void patchUpdatesBothFields() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
-        User patched = service.patch(created.id(), "alicia@example.com", "Alicia Smith");
+        User patched = service.patch(created.id(), "alicia@example.com", "Alicia Smith", UserRole.SELLER);
 
         assertEquals("alicia@example.com", patched.email());
         assertEquals("Alicia Smith", patched.displayName());
@@ -274,27 +275,27 @@ class UserServiceTest {
     void patchThrowsWhenUserNotFound() {
         UserService service = new UserService(new InMemoryRepo());
 
-        assertThrows(UserNotFoundException.class, () -> service.patch(999L, "x@x.com", null));
+        assertThrows(UserNotFoundException.class, () -> service.patch(999L, "x@x.com", null, null));
     }
 
     @Test
     void patchThrowsOnDuplicateEmail() {
         UserService service = new UserService(new InMemoryRepo());
-        service.create("alice@example.com", "Alice");
-        User bob = service.create("bob@example.com", "Bob");
+        service.create("alice@example.com", "Alice", UserRole.BUYER);
+        User bob = service.create("bob@example.com", "Bob", UserRole.BUYER);
 
         assertThrows(DuplicateUserException.class,
-                () -> service.patch(bob.id(), "alice@example.com", null));
+                () -> service.patch(bob.id(), "alice@example.com", null, null));
     }
 
     @Test
     void patchAllowsSameEmailCaseVariation() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
         // Patching with ALICE@EXAMPLE.COM should NOT be rejected — same user, different case
         User patched = assertDoesNotThrow(
-                () -> service.patch(created.id(), "ALICE@EXAMPLE.COM", null));
+                () -> service.patch(created.id(), "ALICE@EXAMPLE.COM", null, null));
 
         assertEquals("ALICE@EXAMPLE.COM", patched.email());
         assertEquals("Alice", patched.displayName()); // unchanged
@@ -305,7 +306,7 @@ class UserServiceTest {
     @Test
     void deleteRemovesUser() {
         UserService service = new UserService(new InMemoryRepo());
-        User created = service.create("alice@example.com", "Alice");
+        User created = service.create("alice@example.com", "Alice", UserRole.BUYER);
 
         service.deleteById(created.id());
 
@@ -333,7 +334,7 @@ class UserServiceTest {
                     user.keycloakId(),
                     user.email(),
                     user.displayName(),
-                    user.isSeller(),
+                    user.role(),
                     user.sellerDisplayName(),
                     user.sellerBio(),
                     user.sellerRating(),

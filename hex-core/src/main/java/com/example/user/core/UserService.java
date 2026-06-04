@@ -2,6 +2,7 @@ package com.example.user.core;
 
 import com.example.user.model.PagedUsers;
 import com.example.user.model.User;
+import com.example.user.model.UserRole;
 import com.example.user.port.in.CreateUserPort;
 import com.example.user.port.in.DeleteUserPort;
 import com.example.user.port.in.GetAllUsersPort;
@@ -24,11 +25,12 @@ public class UserService
     }
 
     @Override
-    public User create(String email, String displayName) {
+    public User create(String email, String displayName, UserRole role) {
         if (userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
-        return userRepositoryPort.save(User.createBuyer(null, null, email, displayName));
+        UserRole effectiveRole = role != null ? role : UserRole.BUYER;
+        return userRepositoryPort.save(new User(null, null, email, displayName, effectiveRole, null, null, null, null, null, null));
     }
 
     @Override
@@ -53,18 +55,19 @@ public class UserService
     }
 
     @Override
-    public User update(Long id, String email, String displayName) {
+    public User update(Long id, String email, String displayName, UserRole role) {
         User existing = userRepositoryPort.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found for id: " + id));
         if (!existing.email().equalsIgnoreCase(email) && userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
         }
+        UserRole effectiveRole = role != null ? role : existing.role();
         return userRepositoryPort.update(new User(
                 id,
                 existing.keycloakId(),
                 email,
                 displayName,
-                existing.isSeller(),
+                effectiveRole,
                 existing.sellerDisplayName(),
                 existing.sellerBio(),
                 existing.sellerRating(),
@@ -75,11 +78,12 @@ public class UserService
     }
 
     @Override
-    public User patch(Long id, String email, String displayName) {
+    public User patch(Long id, String email, String displayName, UserRole role) {
         User existing = userRepositoryPort.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found for id: " + id));
         String newEmail       = email       != null ? email       : existing.email();
         String newDisplayName = displayName != null ? displayName : existing.displayName();
+        UserRole newRole      = role        != null ? role        : existing.role();
         if (email != null && !existing.email().equalsIgnoreCase(email)
                 && userRepositoryPort.existsByEmail(email)) {
             throw new DuplicateUserException("User already exists for email: " + email);
@@ -89,7 +93,7 @@ public class UserService
                 existing.keycloakId(),
                 newEmail,
                 newDisplayName,
-                existing.isSeller(),
+                newRole,
                 existing.sellerDisplayName(),
                 existing.sellerBio(),
                 existing.sellerRating(),

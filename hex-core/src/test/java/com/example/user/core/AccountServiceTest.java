@@ -130,7 +130,7 @@ class AccountServiceTest {
                     user.keycloakId(),
                     user.email(),
                     user.displayName(),
-                    user.isSeller(),
+                    user.role(),
                     user.sellerDisplayName(),
                     user.sellerBio(),
                     user.sellerRating(),

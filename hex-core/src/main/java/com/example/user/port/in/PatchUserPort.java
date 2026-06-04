@@ -1,6 +1,7 @@
 package com.example.user.port.in;
 
 import com.example.user.model.User;
+import com.example.user.model.UserRole;
 
 /**
  * Inbound port for partial user update (HTTP PATCH / SCIM PATCH).
@@ -14,10 +15,11 @@ public interface PatchUserPort {
      * @param id          the user to update
      * @param email       new e-mail address, or {@code null} to keep existing
      * @param displayName new display name, or {@code null} to keep existing
+     * @param role        new role, or {@code null} to keep existing
      * @return the updated user
      * @throws com.example.user.core.UserNotFoundException    if no user exists with the given id
      * @throws com.example.user.core.DuplicateUserException   if the new e-mail is already taken by another user
      */
-    User patch(Long id, String email, String displayName);
+    User patch(Long id, String email, String displayName, UserRole role);
 }
 

@@ -1,5 +1,5 @@
-import { getJson, postJson, putJson, deleteVoid } from './http';
-import type { UserDto, CreateUserDto, UpdateUserDto } from '../types/user.dto';
+import { getJson, postJson, putJson, patchJson, deleteVoid } from './http';
+import type { UserDto, CreateUserDto, UpdateUserDto, PatchUserDto } from '../types/user.dto';
 
 const BASE = '/api/v1/users';
 
@@ -44,6 +44,15 @@ export async function createUser(body: CreateUserDto): Promise<UserDto> {
 /** Fully replace a user by ID. Returns the updated entity. */
 export async function updateUser(id: number, body: UpdateUserDto): Promise<UserDto> {
   return putJson<UserDto>(`${BASE}/${id}`, body);
+}
+
+/**
+ * Partially update a user by ID (PATCH semantics).
+ * Only the fields present in `body` are changed; omitted fields keep their current values.
+ * At least one field must be provided.
+ */
+export async function patchUser(id: number, body: PatchUserDto): Promise<UserDto> {
+  return patchJson<UserDto>(`${BASE}/${id}`, body);
 }
 
 /** Delete a user by ID. Returns void (204 No Content). */

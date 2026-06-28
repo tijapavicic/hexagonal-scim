@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Hoist mocks before module import ─────────────────────────────────────────
-const { getJsonMock, postJsonMock, putJsonMock, deleteVoidMock } = vi.hoisted(() => ({
+const { getJsonMock, postJsonMock, putJsonMock, patchJsonMock, deleteVoidMock } = vi.hoisted(() => ({
   getJsonMock:    vi.fn(),
   postJsonMock:   vi.fn(),
   putJsonMock:    vi.fn(),
+  patchJsonMock:  vi.fn(),
   deleteVoidMock: vi.fn(),
 }));
 
@@ -12,6 +13,7 @@ vi.mock('./http', () => ({
   getJson:    getJsonMock,
   postJson:   postJsonMock,
   putJson:    putJsonMock,
+  patchJson:  patchJsonMock,
   deleteVoid: deleteVoidMock,
   ApiHttpError: class ApiHttpError extends Error {
     status: number;
@@ -19,7 +21,7 @@ vi.mock('./http', () => ({
   },
 }));
 
-import { listUsers, getUserById, getUserByKeycloakId, createUser, updateUser, deleteUser } from './users';
+import { listUsers, getUserById, getUserByKeycloakId, createUser, updateUser, patchUser, deleteUser } from './users';
 import type { UserDto } from '../types/user.dto';
 import { UserRole } from '../types/user.dto';
 
@@ -123,6 +125,29 @@ describe('api/users', () => {
       const result = await updateUser(1, body);
       expect(putJsonMock).toHaveBeenCalledWith('/api/v1/users/1', body);
       expect(result.displayName).toBe('Alicia Smith');
+    });
+  });
+
+  // ── patchUser ───────────────────────────────────────────────────────────────
+  describe('patchUser', () => {
+    it('calls PATCH /api/v1/users/{id} with partial body', async () => {
+      patchJsonMock.mockResolvedValue({ ...alice, displayName: 'Alice Updated' });
+      const body = { displayName: 'Alice Updated' };
+      const result = await patchUser(1, body);
+      expect(patchJsonMock).toHaveBeenCalledWith('/api/v1/users/1', body);
+      expect(result.displayName).toBe('Alice Updated');
+    });
+
+    it('can patch only email', async () => {
+      patchJsonMock.mockResolvedValue({ ...alice, email: 'new@example.com' });
+      const result = await patchUser(1, { email: 'new@example.com' });
+      expect(patchJsonMock).toHaveBeenCalledWith('/api/v1/users/1', { email: 'new@example.com' });
+      expect(result.email).toBe('new@example.com');
+    });
+
+    it('propagates 404 when user not found', async () => {
+      patchJsonMock.mockRejectedValue(new Error('Request failed (404).'));
+      await expect(patchUser(999, { displayName: 'Ghost' })).rejects.toThrow('404');
     });
   });
 

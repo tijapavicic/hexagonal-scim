@@ -14,6 +14,10 @@ export class ApiHttpError extends Error {
   }
 }
 
+/**
+ * Refreshes the Keycloak token (if expiring within 30 s) and returns the
+ * `Authorization: Bearer …` header.  Redirects to login on any failure.
+ */
 async function authHeader(): Promise<Record<string, string>> {
   const keycloak = getKeycloak();
 
@@ -39,8 +43,31 @@ async function authHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${keycloak.token}` };
 }
 
+/**
+ * Builds the complete set of request headers for every outbound call:
+ *
+ * - `Authorization: Bearer <token>`  — Keycloak JWT, auto-refreshed when expiring
+ * - `X-Correlation-ID`               — frontend session trace ID forwarded to backend
+ *                                       for Splunk log correlation (omitted when unset)
+ * - `X-Request-ID`                   — unique UUID per request; allows backend to match
+ *                                       a single request across distributed service logs
+ * - `Accept: application/json`
+ *
+ * Callers may spread additional headers (e.g. Content-Type) on top.
+ */
+async function buildBaseHeaders(): Promise<Record<string, string>> {
+  const auth = await authHeader();
+  const corrId = getCorrelationId();
+  return {
+    Accept: 'application/json',
+    ...auth,
+    ...(corrId ? { 'X-Correlation-ID': corrId } : {}),
+    'X-Request-ID': crypto.randomUUID(),
+  };
+}
+
 export async function getJson<T>(path: string): Promise<T> {
-  const headers = await authHeader();
+  const headers = await buildBaseHeaders();
   const startTime = performance.now();
 
   logger.requestStart('GET', path);
@@ -48,10 +75,7 @@ export async function getJson<T>(path: string): Promise<T> {
   try {
     const response = await fetch(path, {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        ...headers,
-      },
+      headers,
     });
 
     const duration = Math.round(performance.now() - startTime);
@@ -90,7 +114,7 @@ export async function getJson<T>(path: string): Promise<T> {
 }
 
 async function mutate<T>(method: string, path: string, body?: unknown): Promise<T | void> {
-  const headers = await authHeader();
+  const baseHeaders = await buildBaseHeaders();
   const isJson = body !== undefined;
   const startTime = performance.now();
 
@@ -101,8 +125,7 @@ async function mutate<T>(method: string, path: string, body?: unknown): Promise<
       method,
       headers: {
         ...(isJson ? { 'Content-Type': 'application/json' } : {}),
-        Accept: 'application/json',
-        ...headers,
+        ...baseHeaders,
       },
       body: isJson ? JSON.stringify(body) : undefined,
     });
@@ -159,7 +182,16 @@ export function putJson<T>(path: string, body: unknown): Promise<T> {
   return mutate<T>('PUT', path, body) as Promise<T>;
 }
 
+/**
+ * Sends an authenticated `PATCH` request.
+ *
+ * Use for partial updates (only changed fields) where the backend supports
+ * `PATCH` semantics — e.g. `PATCH /api/v1/users/{id}`.
+ */
+export function patchJson<T>(path: string, body: unknown): Promise<T> {
+  return mutate<T>('PATCH', path, body) as Promise<T>;
+}
+
 export function deleteVoid(path: string): Promise<void> {
   return mutate('DELETE', path) as Promise<void>;
 }
-

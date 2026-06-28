@@ -50,14 +50,30 @@ describe('api/payments', () => {
 
   describe('listPayments', () => {
     it('calls GET /api/v1/payments with page and size', async () => {
-      getJsonMock.mockResolvedValue([paymentA, paymentB]);
+      getJsonMock.mockResolvedValue({
+        content: [paymentA, paymentB],
+        pageNumber: 0,
+        pageSize: 10,
+        totalElements: 2,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      });
       const result = await listPayments(0, 10);
       expect(getJsonMock).toHaveBeenCalledWith('/api/v1/payments?page=0&size=10');
       expect(result).toEqual([paymentA, paymentB]);
     });
 
     it('uses defaults page=0 size=10 when no params provided', async () => {
-      getJsonMock.mockResolvedValue([]);
+      getJsonMock.mockResolvedValue({
+        content: [],
+        pageNumber: 0,
+        pageSize: 10,
+        totalElements: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
+      });
       await listPayments();
       expect(getJsonMock).toHaveBeenCalledWith('/api/v1/payments?page=0&size=10');
     });

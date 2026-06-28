@@ -32,5 +32,16 @@ export interface UpdateUserDto {
   role?: UserRole;  // Optional, defaults to existing value
 }
 
+/**
+ * Fields for a partial user update (PATCH semantics, id in URL).
+ * Only the provided fields are changed; omitted fields retain their current values.
+ * At least one field must be provided.
+ */
+export interface PatchUserDto {
+  email?: string;
+  displayName?: string;
+  role?: UserRole;
+}
+
 
 

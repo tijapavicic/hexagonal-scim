@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -71,6 +72,25 @@ public class ApiExceptionHandlerAdapter {
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .reduce((a, b) -> a + "; " + b)
                 .orElse("Request validation failed");
+        return error("VALIDATION_ERROR", detail, req);
+    }
+
+    /**
+     * Handles {@link HandlerMethodValidationException} thrown by Spring MVC when
+     * {@code @Validated} method parameters (e.g. {@code @RequestParam @Min(0) Integer page})
+     * fail their constraints.  Requires {@code @Validated} on the controller class.
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMethodValidation(HandlerMethodValidationException ex, HttpServletRequest req) {
+        String detail = ex.getAllValidationResults().stream()
+                .flatMap(r -> r.getResolvableErrors().stream()
+                        .map(e -> {
+                            String paramName = r.getMethodParameter().getParameterName();
+                            return (paramName != null ? paramName + ": " : "") + e.getDefaultMessage();
+                        }))
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("Request parameter validation failed");
         return error("VALIDATION_ERROR", detail, req);
     }
 

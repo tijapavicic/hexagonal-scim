@@ -4,6 +4,8 @@ import com.example.user.model.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
  * Request payload for a partial user update (HTTP PATCH / SCIM PATCH).
@@ -14,9 +16,13 @@ public record PatchUserRequest(
 
         @Schema(description = "New e-mail address (optional — omit to keep existing)", example = "newemail@example.com")
         @Email(message = "email must be a valid address")
+        @Size(max = 254, message = "email must not exceed 254 characters")
         String email,
 
         @Schema(description = "New display name (optional — omit to keep existing)", example = "Alice")
+        @Size(max = 100, message = "displayName must not exceed 100 characters")
+        @Pattern(regexp = "^[^\\r\\n\\t\\x00-\\x1F\\x7F]*$",
+                message = "displayName must not contain control characters")
         String displayName,
 
         @Schema(description = "New role (optional — omit to keep existing)", example = "SELLER", allowableValues = {"BUYER", "SELLER", "ADMIN"})
@@ -31,4 +37,3 @@ public record PatchUserRequest(
         return email != null || displayName != null || role != null;
     }
 }
-

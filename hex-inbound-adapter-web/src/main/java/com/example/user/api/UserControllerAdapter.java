@@ -27,6 +27,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -34,6 +38,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -49,6 +54,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Users", description = "User management — create and retrieve users")
 @RestController
+@Validated
 @RequestMapping({UserControllerAdapter.V1_BASE_PATH, UserControllerAdapter.LEGACY_BASE_PATH})
 public class UserControllerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(UserControllerAdapter.class);
@@ -145,10 +151,10 @@ public class UserControllerAdapter {
     @GetMapping
     public PagedUserResponse getAll(
             @Parameter(description = "Zero-indexed page number (uses configured default when absent)")
-            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "page", required = false) @Min(value = 0, message = "page must be >= 0") Integer page,
 
             @Parameter(description = "Items per page, max 100 (uses configured default when absent)")
-            @RequestParam(name = "size", required = false) Integer size,
+            @RequestParam(name = "size", required = false) @Min(value = 1, message = "size must be >= 1") @Max(value = 100, message = "size must be <= 100") Integer size,
 
             @Parameter(description = "Set to `false` to return ALL users without paging")
             @RequestParam(name = "pageable", required = false) Boolean pageable
@@ -227,7 +233,7 @@ public class UserControllerAdapter {
     @GetMapping("/{id}")
     public UserResponse getById(
             @Parameter(description = "User ID", example = "1", required = true)
-            @PathVariable("id") Long id) {
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id) {
         logger.info("Fetching user: id={}", id);
         User user = getUserPort.getById(id);
         logger.info("User fetched successfully: id={}, email={}, role={}", user.id(), user.email(), user.role());
@@ -254,7 +260,10 @@ public class UserControllerAdapter {
     @GetMapping("/by-keycloak-id/{keycloakId}")
     public UserResponse getByKeycloakId(
             @Parameter(description = "Keycloak user UUID", example = "a59ba86d-5c3c-42f3-b15c-a54e623fbb64", required = true)
-            @PathVariable("keycloakId") String keycloakId) {
+            @PathVariable("keycloakId")
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    message = "keycloakId must be a valid UUID")
+            String keycloakId) {
         logger.info("Fetching user: keycloakId={}", keycloakId);
         User user = getUserByKeycloakIdPort.getByKeycloakId(keycloakId);
         logger.info("User fetched successfully: id={}, keycloakId={}, email={}, role={}", user.id(), user.keycloakId(), user.email(), user.role());
@@ -280,7 +289,7 @@ public class UserControllerAdapter {
     @PutMapping("/{id}")
     public UserResponse update(
             @Parameter(description = "User ID", example = "1", required = true)
-            @PathVariable("id") Long id,
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id,
             @Valid @RequestBody UpdateUserRequest request) {
         logger.info("Updating user: id={}, email={}, role={}", id, request.email(), request.role());
         User updated = updateUserPort.update(id, request.email(), request.displayName(), request.role());
@@ -311,7 +320,7 @@ public class UserControllerAdapter {
     @PatchMapping("/{id}")
     public UserResponse patch(
             @Parameter(description = "User ID", example = "1", required = true)
-            @PathVariable("id") Long id,
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id,
             @Valid @RequestBody PatchUserRequest request) {
         logger.info("Patching user: id={}, email={}, displayName={}, role={}", id, request.email(), request.displayName(), request.role());
         User patched = patchUserPort.patch(id, request.email(), request.displayName(), request.role());
@@ -331,7 +340,7 @@ public class UserControllerAdapter {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @Parameter(description = "User ID", example = "1", required = true)
-            @PathVariable("id") Long id) {
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id) {
         logger.info("Deleting user: id={}", id);
         deleteUserPort.deleteById(id);
         logger.info("User deleted successfully: id={}", id);

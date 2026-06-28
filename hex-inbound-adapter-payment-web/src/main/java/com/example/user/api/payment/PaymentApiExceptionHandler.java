@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 @RestControllerAdvice(basePackageClasses = {ProductControllerAdapter.class, PaymentControllerAdapter.class})
 @Order(0)
@@ -33,6 +34,21 @@ public class PaymentApiExceptionHandler {
                 .reduce((a, b) -> a + "; " + b)
                 .orElse("Request validation failed");
         LOG.warn("Validation error at {}: {}", req.getRequestURI(), detail);
+        return new ErrorResponse("VALIDATION_ERROR", detail, req.getRequestURI());
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMethodValidation(HandlerMethodValidationException ex, HttpServletRequest req) {
+        String detail = ex.getAllValidationResults().stream()
+                .flatMap(r -> r.getResolvableErrors().stream()
+                        .map(e -> {
+                            String paramName = r.getMethodParameter().getParameterName();
+                            return (paramName != null ? paramName + ": " : "") + e.getDefaultMessage();
+                        }))
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("Request parameter validation failed");
+        LOG.warn("Method validation error at {}: {}", req.getRequestURI(), detail);
         return new ErrorResponse("VALIDATION_ERROR", detail, req.getRequestURI());
     }
 

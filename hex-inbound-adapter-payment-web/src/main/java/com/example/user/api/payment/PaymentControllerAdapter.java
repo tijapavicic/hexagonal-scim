@@ -12,11 +12,15 @@ import com.example.user.port.in.InitiatePaymentPort;
 import com.example.user.port.in.ResolvePayerPort;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Validated
 @RequestMapping("/api/v1/payments")
 public class PaymentControllerAdapter {
 
@@ -92,10 +97,10 @@ public class PaymentControllerAdapter {
     @GetMapping
     public PagedPaymentResponse getAll(
             @Parameter(description = "Zero-indexed page number (uses configured default when absent)")
-            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "page", required = false) @Min(value = 0, message = "page must be >= 0") Integer page,
 
             @Parameter(description = "Items per page, max 100 (uses configured default when absent)")
-            @RequestParam(name = "size", required = false) Integer size,
+            @RequestParam(name = "size", required = false) @Min(value = 1, message = "size must be >= 1") @Max(value = 100, message = "size must be <= 100") Integer size,
 
             @Parameter(description = "Set to `false` to return ALL payments without paging")
             @RequestParam(name = "pageable", required = false) Boolean pageable
@@ -127,7 +132,8 @@ public class PaymentControllerAdapter {
     }
 
     @GetMapping("/{id}")
-    public PaymentResponse getById(@PathVariable("id") Long id) {
+    public PaymentResponse getById(
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id) {
         LOG.info("Fetching payment by id: {}", id);
         PaymentResponse response = toResponse(getPaymentPort.getById(id));
         LOG.info("Payment fetched: id={}, status={}", response.id(), response.status());

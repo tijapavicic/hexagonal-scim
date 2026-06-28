@@ -11,9 +11,11 @@ import com.example.user.port.in.GetUserAccountsPort;
 import com.example.user.port.in.TopUpAccountPort;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +38,7 @@ import java.util.List;
  * displayed in the <em>Account Operations</em> Grafana panels.
  */
 @RestController
+@Validated
 @RequestMapping("/api/v1/users/{userId}/accounts")
 public class AccountControllerAdapter {
 
@@ -67,7 +70,9 @@ public class AccountControllerAdapter {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public AccountResponse create(@PathVariable("userId") Long userId, @Valid @RequestBody CreateAccountRequest request) {
+    public AccountResponse create(
+            @PathVariable("userId") @Positive(message = "userId must be a positive number") Long userId,
+            @Valid @RequestBody CreateAccountRequest request) {
         logger.info("flow_stage=REQUEST_RECEIVED operation=account.create userId={} accountName={} status=INITIATED", userId, request.name());
 
         Account created = createAccountPort.create(userId, request.name());
@@ -80,7 +85,8 @@ public class AccountControllerAdapter {
     }
 
     @GetMapping
-    public List<AccountResponse> getAllByUserId(@PathVariable("userId") Long userId) {
+    public List<AccountResponse> getAllByUserId(
+            @PathVariable("userId") @Positive(message = "userId must be a positive number") Long userId) {
         logger.info("flow_stage=REQUEST_RECEIVED operation=account.getAll userId={} status=INITIATED", userId);
 
         List<AccountResponse> result = getUserAccountsPort.getAllByUserId(userId).stream()
@@ -95,7 +101,9 @@ public class AccountControllerAdapter {
     }
 
     @GetMapping("/{accountId}")
-    public AccountResponse getById(@PathVariable("userId") Long userId, @PathVariable("accountId") Long accountId) {
+    public AccountResponse getById(
+            @PathVariable("userId") @Positive(message = "userId must be a positive number") Long userId,
+            @PathVariable("accountId") @Positive(message = "accountId must be a positive number") Long accountId) {
         logger.info("flow_stage=REQUEST_RECEIVED operation=account.getById userId={} accountId={} status=INITIATED", userId, accountId);
 
         AccountResponse response = toResponse(getAccountPort.getById(userId, accountId));
@@ -109,7 +117,9 @@ public class AccountControllerAdapter {
 
     @DeleteMapping("/{accountId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable("userId") Long userId, @PathVariable("accountId") Long accountId) {
+    public void delete(
+            @PathVariable("userId") @Positive(message = "userId must be a positive number") Long userId,
+            @PathVariable("accountId") @Positive(message = "accountId must be a positive number") Long accountId) {
         logger.info("flow_stage=REQUEST_RECEIVED operation=account.delete userId={} accountId={} status=INITIATED", userId, accountId);
 
         deleteAccountPort.deleteById(userId, accountId);
@@ -121,8 +131,8 @@ public class AccountControllerAdapter {
 
     @PostMapping("/{accountId}/topup")
     public AccountResponse topUp(
-            @PathVariable("userId") Long userId,
-            @PathVariable("accountId") Long accountId,
+            @PathVariable("userId") @Positive(message = "userId must be a positive number") Long userId,
+            @PathVariable("accountId") @Positive(message = "accountId must be a positive number") Long accountId,
             @Valid @RequestBody TopUpAccountRequest request
     ) {
         logger.info("flow_stage=REQUEST_RECEIVED operation=account.topup userId={} accountId={} topupAmount={} status=INITIATED", userId, accountId, request.amount());

@@ -10,9 +10,11 @@ import com.example.user.port.in.GetAllProductsPort;
 import com.example.user.port.in.GetProductPort;
 import com.example.user.port.in.UpdateProductPort;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/api/v1/products")
 public class ProductControllerAdapter {
 
@@ -76,7 +79,8 @@ public class ProductControllerAdapter {
     }
 
     @GetMapping("/{id}")
-    public ProductResponse getById(@PathVariable("id") Long id) {
+    public ProductResponse getById(
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id) {
         LOG.info("Fetching product by id: {}", id);
         ProductResponse response = toResponse(getProductPort.getById(id));
         LOG.info("Product fetched: id={}, name={}", response.id(), response.name());
@@ -84,7 +88,9 @@ public class ProductControllerAdapter {
     }
 
     @PutMapping("/{id}")
-    public ProductResponse update(@PathVariable("id") Long id, @Valid @RequestBody UpdateProductRequest request) {
+    public ProductResponse update(
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id,
+            @Valid @RequestBody UpdateProductRequest request) {
         LOG.info("Updating product: id={}, name={}", id, request.name());
         Product updated = updateProductPort.update(
                 id,
@@ -100,7 +106,8 @@ public class ProductControllerAdapter {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable("id") Long id) {
+    public void delete(
+            @PathVariable("id") @Positive(message = "id must be a positive number") Long id) {
         LOG.info("Deleting product: id={}", id);
         deleteProductPort.deleteById(id);
         LOG.info("Product deleted: id={}", id);
@@ -117,4 +124,3 @@ public class ProductControllerAdapter {
         );
     }
 }
-
